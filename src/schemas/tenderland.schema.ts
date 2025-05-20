@@ -17,14 +17,14 @@ export const TenderSchema = z.object({
     regNumber: z.string(),
     name: z.string(),
     beginPrice: z.number(),
-    publishDate: z.string().datetime(),
-    endDate: z.string().datetime(),
+    publishDate: z.string(),
+    endDate: z.string(),
     region: z.string(),
     typeName: z.string(),
-    lotCategories: z.array(z.string()),
+    lotCategories: z.array(z.string()).optional(),
     files: z.string().url(),
     module: z.string(),
-    etpLink: z.string().url(),
+    etpLink: z.string(),
     customers: z.array(CustomerSchema)
 });
 
