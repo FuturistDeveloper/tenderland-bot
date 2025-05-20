@@ -1,50 +1,61 @@
-import crypto from 'crypto';
-import { model, Schema } from "mongoose";
+import mongoose, { Document, Schema } from 'mongoose';
 import { IAnalytics } from './Analytics';
 import { IReport } from './Report';
 
-export interface ITender {
-    id: string;
-    title: string;
-    description: string;
-    analytics: IAnalytics;
-    reports: IReport[];
+export interface ITender extends Document {
+    regNumber: string;
+    name: string;
+    beginPrice: number;
+    publishDate: Date;
+    endDate: Date;
+    region: string;
+    typeName: string;
+    lotCategories?: string[];
+    files: string;
+    module: string;
+    etpLink: string;
+    customers: Array<{
+        lotCustomerShortName: string;
+    }>;
+    ordinalNumber: number;
+    isProcessed: boolean;
     createdAt: Date;
     updatedAt: Date;
+    analytics: IAnalytics | null;
+    reports: IReport[] | null;
 }
 
-export const tenderSchema = new Schema<ITender>({
-    id: {
-        type: String,
-        required: true,
-        unique: true,
-        default: () => crypto.randomUUID(),
-    },
-    title: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    description: {
-        type: String,
-        required: true,
-    },
+const TenderSchema = new Schema<ITender>({
+    regNumber: { type: String, required: true },
+    name: { type: String, required: true },
+    beginPrice: { type: Number, required: true },
+    publishDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    region: { type: String, required: true },
+    typeName: { type: String, required: true },
+    lotCategories: [{ type: String }],
+    files: { type: String, required: true },
+    module: { type: String, required: true },
+    etpLink: { type: String, required: true },
+    customers: [{
+        lotCustomerShortName: { type: String, required: true }
+    }],
+    ordinalNumber: { type: Number, required: true },
+    isProcessed: { type: Boolean, default: false },
     analytics: {
         type: Schema.Types.ObjectId,
         ref: 'Analytics',
+        default: null
     },
     reports: [{
         type: Schema.Types.ObjectId,
         ref: 'Report',
-    }],
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now,
-    },
-}, { timestamps: true });
+        default: null
+    }]
+}, {
+    timestamps: true
+});
 
-export const Tender = model<ITender>('Tender', tenderSchema);
+TenderSchema.index({ regNumber: 1, ordinalNumber: 1 }, { unique: true });
+
+export const Tender = mongoose.model<ITender>('Tender', TenderSchema);
