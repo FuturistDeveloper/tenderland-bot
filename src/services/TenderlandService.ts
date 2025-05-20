@@ -2,18 +2,18 @@ import axios, { AxiosInstance } from 'axios';
 import fs from 'fs';
 import path from 'path';
 import { ENV } from "..";
+import { Config } from '../config/config';
 import { CreateTaskResponse, CreateTaskResponseSchema, TendersResponse, TendersResponseSchema } from '../schemas/tenderland.schema';
 import { handleApiError } from '../utils/error-handler';
 
-class TenderlandService {
+export class TenderlandService {
     private readonly baseUrl: string;
     private readonly apiKey: string;
     private readonly axiosInstance: AxiosInstance;
+    private readonly config: Config;
 
-    public readonly batchSize = 100;
-    public readonly limit = 1000;
-
-    constructor() {
+    constructor(config: Config) {
+        this.config = config;
         this.baseUrl = 'https://tenderland.ru/api/v1';
         this.apiKey = ENV.TENDERLAND_API_KEY;
         
@@ -28,9 +28,11 @@ class TenderlandService {
         });
     }
 
-    async createTaskForGettingTenders(autosearchId: number, orderBy: string = 'desc'): Promise<CreateTaskResponse | undefined> {
+    async createTaskForGettingTenders(): Promise<CreateTaskResponse | undefined> {
         try {
-            const response = await this.axiosInstance.get(`/Export/Create?autosearchId=${autosearchId}&limit=${this.limit}&batchSize=${this.batchSize}&orderBy=${orderBy}&format=json`);
+            const response = await this.axiosInstance.get(
+                `/Export/Create?autosearchId=${this.config.tenderland.autosearchId}&limit=${this.config.tenderland.limit}&batchSize=${this.config.tenderland.batchSize}&format=json`
+            );
             return CreateTaskResponseSchema.parse(response.data);
         } catch (error) {
             handleApiError(error, 'createTaskForGettingTenders');

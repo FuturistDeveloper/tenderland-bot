@@ -1,20 +1,23 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { Config } from '../config/config';
 import { ENV } from '../index';
 
 export class ClaudeService {
   private client: Anthropic;
+  private readonly config: Config;
 
-  constructor() {
+  constructor(config: Config) {
+    this.config = config;
     this.client = new Anthropic({
-      apiKey: ENV.TENDERLAND_API_KEY,
+      apiKey: ENV.CLAUDE_API_KEY,
     });
   }
 
   public async generateResponse(prompt: string): Promise<string> {
     try {
       const response = await this.client.messages.create({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 1000,
+        model: this.config.claude.model,
+        max_tokens: this.config.claude.maxTokens,
         messages: [
           {
             role: 'user',
