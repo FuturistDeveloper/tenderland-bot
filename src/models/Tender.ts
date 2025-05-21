@@ -1,23 +1,27 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { IAnalytics } from './Analytics';
 import { IReport } from './Report';
+import { TenderResponse } from '@/services/ClaudeService';
 
 export interface ITender extends Document {
     regNumber: string;
-    name: string;
-    beginPrice: number;
-    publishDate: Date;
-    endDate: Date;
-    region: string;
-    typeName: string;
-    lotCategories?: string[];
-    files: string;
-    module: string;
-    etpLink: string;
-    customers: Array<{
-        lotCustomerShortName: string;
-    }>;
-    ordinalNumber: number;
+    tender: {
+        ordinalNumber: number;
+        name: string;
+        beginPrice: number;
+        publishDate: Date;
+        endDate: Date;
+        region: string;
+        typeName: string;
+        lotCategories?: string[];
+        files: string;
+        module: string;
+        etpLink: string;
+        customers: Array<{
+            lotCustomerShortName: string;
+        }>;
+    };
+    claudeResponse: TenderResponse | null;
     isProcessed: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -27,20 +31,22 @@ export interface ITender extends Document {
 
 const TenderSchema = new Schema<ITender>({
     regNumber: { type: String, required: true },
-    name: { type: String, required: true },
-    beginPrice: { type: Number, required: true },
-    publishDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
-    region: { type: String, required: true },
-    typeName: { type: String, required: true },
-    lotCategories: [{ type: String }],
-    files: { type: String, required: true },
-    module: { type: String, required: true },
-    etpLink: { type: String, required: true },
-    customers: [{
-        lotCustomerShortName: { type: String, required: true }
-    }],
-    ordinalNumber: { type: Number, required: true },
+    tender: {
+        ordinalNumber: { type: Number, required: true },
+        name: { type: String, required: true },
+        beginPrice: { type: Number, required: true },
+        publishDate: { type: Date, required: true },
+        endDate: { type: Date, required: true },
+        region: { type: String, required: true },
+        typeName: { type: String, required: true },
+        lotCategories: [{ type: String }],
+        files: { type: String, required: true },
+        module: { type: String, required: true },
+        etpLink: { type: String, required: true },
+        customers: [{
+            lotCustomerShortName: { type: String, required: true }
+        }],
+    },
     isProcessed: { type: Boolean, default: false },
     analytics: {
         type: Schema.Types.ObjectId,
@@ -51,7 +57,11 @@ const TenderSchema = new Schema<ITender>({
         type: Schema.Types.ObjectId,
         ref: 'Report',
         default: null
-    }]
+    }],
+    claudeResponse: {
+        type: Object,
+        default: null
+    }
 }, {
     timestamps: true
 });
