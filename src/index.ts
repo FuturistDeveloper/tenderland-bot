@@ -1,6 +1,5 @@
 import dotenv from 'dotenv';
 import express from 'express';
-import cron from 'node-cron';
 import { getConfig } from './config/config';
 import { connectDB } from './config/database';
 import { Tender } from './models/Tender';
@@ -25,62 +24,100 @@ connectDB();
 
 botService.start();
 
-cron.schedule(config.cronSchedule, async () => {
-  try {
-    console.log(`Running TenderlandService cron job at ${new Date().toISOString()} in ${config.environment} environment`);
-    const task = await tenderlandService.createTaskForGettingTenders();
+// cron.schedule(config.cronSchedule, async () => {
+const func = async () => {
+  // try {
+  //   console.log(`Running TenderlandService cron job at ${new Date().toISOString()} in ${config.environment} environment`);
+  //   const task = await tenderlandService.createTaskForGettingTenders();
 
-    console.log(task);
+  //   console.log(task);
 
-    if (!task) {
-      console.error('Error getting task');
-      return;
-    }
+  //   if (!task) {
+  //     console.error('Error getting task');
+  //     return;
+  //   }
 
-    const tenders = await tenderlandService.getTendersByTaskId(task.Id);
-    // const tenders = await tenderlandService.getTendersByTaskId(1239286777);
+  //   const tenders = await tenderlandService.getTendersByTaskId(task.Id);
 
-    if (!tenders) {
-      console.error('Error getting tenders');
-      return;
-    }
+  //   if (!tenders) {
+  //     console.error('Error getting tenders');
+  //     return;
+  //   }
 
-    tenders.items.forEach(async (tender) => {
-      const tenderData = tender.tender;
-      try {
-        await Tender.findOneAndUpdate(
-          { regNumber: tenderData.regNumber },
-          {
-            $setOnInsert: {
-              regNumber: tenderData.regNumber,
-              name: tenderData.name,
-              beginPrice: tenderData.beginPrice,
-              publishDate: tenderData.publishDate,
-              endDate: tenderData.endDate,
-                  region: tenderData.region,
-                  typeName: tenderData.typeName,
-                  lotCategories: tenderData.lotCategories,
-                  files: tenderData.files,
-                  module: tenderData.module,
-                  etpLink: tenderData.etpLink,
-              customers: tenderData.customers,
-            }
-          },
-          {
-            upsert: true,
-            new: true,
-            runValidators: true,
-            includeResultMetadata: true,
-          },
-        );
-      } catch (error) {
-        console.error('Error processing tender:', tender.ordinalNumber, error);
-      }
-    });
-  } catch (err) {
-    console.error('Error in TenderlandService cron job:', err);
+  //   tenders.items.forEach(async (tender) => {
+  //     const tenderData = tender.tender;
+  //     try {
+  //       await Tender.findOneAndUpdate(
+  //         { regNumber: tenderData.regNumber },
+  //         {
+  //           $setOnInsert: {
+  //             regNumber: tenderData.regNumber,
+  //             tender: {
+  //               ordinalNumber: tender.ordinalNumber,
+  //               name: tenderData.name,
+  //               beginPrice: tenderData.beginPrice,
+  //               publishDate: tenderData.publishDate,
+  //               endDate: tenderData.endDate,
+  //               region: tenderData.region,
+  //               typeName: tenderData.typeName,
+  //               lotCategories: tenderData.lotCategories,
+  //               files: tenderData.files,
+  //               module: tenderData.module,
+  //               etpLink: tenderData.etpLink,
+  //               customers: tenderData.customers
+  //             },
+  //             isProcessed: false,
+  //             analytics: null,
+  //             reports: null
+  //           }
+  //         },
+  //         {
+  //           upsert: true,
+  //           new: true,
+  //           runValidators: true,
+  //           includeResultMetadata: true,
+  //         },
+  //       );
+  //     } catch (error) {
+  //       console.error('Error processing tender:', tender.ordinalNumber, error);
+  //     }
+  //   });
+  // } catch (err) {
+  //   console.error('Error in TenderlandService cron job:', err);
+  // }
+
+  const tender = await Tender.findOne({
+    regNumber: "0372200174325000009"
+  })
+
+  if(!tender) {
+    console.error('Tender not found');
+    return;
   }
-});
+
+  // const filePaths = await tenderlandService.downloadZipFileAndUnpack(tender.tender.files);
+  // console.log(filePaths);
+
+  const filePaths = [
+    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Прил.3_Требования_к_заявке__(Преимущ.).doc',
+    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Прил.3__ООЗ.docx',
+    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Печатная форма извещения 39482579.html',
+    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\НМЦК_прил._2_(1).docx',
+    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Прил.4_Проект_контракта.doc',
+    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Автоматический контроль.pdf'
+  ]
+  
+  const response =  await claudeService.generateResponse(filePaths);
+
+  console.log(response);
+
+  tender.claudeResponse = response;
+  await tender.save();
+
+  await tenderlandService.cleanupExtractedFiles(filePaths);
+};
+
+func();
 
 app.get('/', (req, res) => {
   res.json({ 
