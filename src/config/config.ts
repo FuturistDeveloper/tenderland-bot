@@ -28,8 +28,8 @@ const developmentConfig: Config = {
     orderBy: 'desc'
   },
   claude: {
-    model: 'claude-3-opus-20240229',
-    maxTokens: 1000
+    model: 'claude-3-7-sonnet-20250219',
+    maxTokens: 20000
   }
 };
 
@@ -43,8 +43,8 @@ const productionConfig: Config = {
     orderBy: 'desc'
   },
   claude: {
-    model: 'claude-3-opus-20240229',
-    maxTokens: 1000
+    model: 'claude-3-7-sonnet-20250219',
+    maxTokens: 20000
   }
 };
 
@@ -58,8 +58,8 @@ const localConfig: Config = {
     orderBy: 'asc'
   },
   claude: {
-    model: 'claude-3-opus-20240229',
-    maxTokens: 100
+    model: 'claude-3-7-sonnet-20250219',
+    maxTokens: 20000
   }
 };
 
