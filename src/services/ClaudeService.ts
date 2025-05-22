@@ -102,6 +102,7 @@ export class ClaudeService {
           let content: string;
           const fileContent = fs.readFileSync(filePath);
           content = fileContent.toString('utf-8');
+          
           // For HTML files, try to extract only the main content
           if (fileExt === '.html' || fileExt === '.htm') {
             // Remove script tags and their content
@@ -110,8 +111,22 @@ export class ClaudeService {
             content = content.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
             // Remove HTML comments
             content = content.replace(/<!--[\s\S]*?-->/g, '');
-            // Remove extra whitespace
+            // Remove all HTML tags
+            content = content.replace(/<[^>]+>/g, ' ');
+            // Remove special characters and symbols
+            content = content.replace(/[^\p{L}\p{N}\s.,;:!?-]/gu, ' ');
+            // Remove multiple spaces, newlines, and tabs
             content = content.replace(/\s+/g, ' ').trim();
+            // Remove empty lines
+            content = content.replace(/^\s*[\r\n]/gm, '');
+          } else {
+            // For non-HTML files, clean the content
+            // Remove special characters and symbols
+            content = content.replace(/[^\p{L}\p{N}\s.,;:!?-]/gu, ' ');
+            // Remove multiple spaces, newlines, and tabs
+            content = content.replace(/\s+/g, ' ').trim();
+            // Remove empty lines
+            content = content.replace(/^\s*[\r\n]/gm, '');
           }
 
           // Truncate content if it's too large
@@ -125,26 +140,36 @@ export class ClaudeService {
             text: content
           };
         } else {
-          const pdfBase64 = fs.readFileSync(filePath).toString('base64');
+          try {
+            const fileContent = fs.readFileSync(filePath);
+            let content = fileContent.toString('utf-8');
 
-          return {
-            type: 'document' as const,
-            source: {
-              type: 'base64' as const,
-              media_type: 'application/pdf' as const,
-              data: pdfBase64
-            },
-            cache_control: { type: 'ephemeral' } as const,
-          };
+            // Truncate content if it's too large
+            if (content.length > MAX_CONTENT_SIZE) {
+              console.warn(`Content size (${content.length} chars) exceeds maximum (${MAX_CONTENT_SIZE} chars). Truncating...`);
+              content = content.substring(0, MAX_CONTENT_SIZE);
+            }
+
+            return {
+              type: 'text' as const,
+              text: content
+            };
+          } catch (error) {
+            console.warn(`Failed to read ${filePath} as text, skipping file`);
+            return null;
+          }
         }
       }));
 
+      // Filter out null values from failed file reads
+      const validContents = fileContents.filter((content): content is { type: 'text'; text: string } => content !== null);
+
       console.log('Processing files:', filePaths);
-      console.log('File contents prepared:', fileContents.length, 'files');
+      console.log('File contents prepared:', validContents.length, 'files');
 
       const response = await this.client.messages.create({
         model: "claude-3-7-sonnet-20250219",
-        max_tokens: 20000,
+        max_tokens: 10000,
         temperature: 1,
         system: "You are a helpful assistant that analyzes tender documents.",
         messages: [
@@ -155,7 +180,7 @@ export class ClaudeService {
                 type: "text",
                 text: PROMPT.claude
               },
-              ...fileContents
+              ...validContents
             ]
           }
         ]
