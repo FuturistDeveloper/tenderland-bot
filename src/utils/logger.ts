@@ -2,18 +2,14 @@ import chalk from 'chalk';
 import { Config } from '../config/config';
 
 const logBox = (title: string, content: string) => {
-  const width = 60;
+  const width = 80;
   const padding = 2;
-  const titlePadding = Math.floor((width - title.length) / 2);
+  const titlePadding = Math.floor((width - title.length - 2) / 2);
   
   console.log('\n' + '═'.repeat(width));
   console.log('║' + ' '.repeat(titlePadding) + chalk.bold(title) + ' '.repeat(width - titlePadding - title.length - 2) + '║');
-  console.log('║' + ' '.repeat(padding) + '─'.repeat(width - padding * 2) + ' '.repeat(padding) + '║');
-  
-  content.split('\n').forEach(line => {
-    console.log('║' + ' '.repeat(padding) + line + ' '.repeat(width - line.length - padding * 2) + '║');
-  });
-  
+  console.log('═'.repeat(width));
+  console.log(content.split('\n').map(line => '║ ' + line.padEnd(width - 4) + ' ║').join('\n'));
   console.log('═'.repeat(width) + '\n');
 };
 
@@ -37,6 +33,10 @@ ${chalk.bold('Tenderland Settings:')}
 ${chalk.bold('Claude Settings:')}
   • Model: ${chalk.cyan(config.claude.model)}
   • Max Tokens: ${chalk.cyan(config.claude.maxTokens)}
+
+${chalk.bold('Gemini Settings:')}
+  • Model: ${chalk.cyan(config.gemini.model)}
+  • Max Tokens: ${chalk.cyan(config.gemini.maxTokens)}
 `;
 
   logBox('Configuration', configContent);
