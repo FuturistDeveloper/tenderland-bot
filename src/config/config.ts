@@ -13,6 +13,10 @@ export const configSchema = z.object({
   claude: z.object({
     model: z.string(),
     maxTokens: z.number()
+  }),
+  gemini: z.object({
+    model: z.string(),
+    maxTokens: z.number()
   })
 });
 
@@ -30,6 +34,10 @@ const developmentConfig: Config = {
   claude: {
     model: 'claude-3-7-sonnet-20250219',
     maxTokens: 20000
+  },
+  gemini: {
+    model: 'gemini-pro',
+    maxTokens: 20000
   }
 };
 
@@ -45,6 +53,10 @@ const productionConfig: Config = {
   claude: {
     model: 'claude-3-7-sonnet-20250219',
     maxTokens: 20000
+  },
+  gemini: {
+    model: 'gemini-pro',
+    maxTokens: 20000
   }
 };
 
@@ -59,6 +71,10 @@ const localConfig: Config = {
   },
   claude: {
     model: 'claude-3-7-sonnet-20250219',
+    maxTokens: 20000
+  },
+  gemini: {
+    model: 'gemini-pro',
     maxTokens: 20000
   }
 };

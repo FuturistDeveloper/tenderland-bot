@@ -8,6 +8,7 @@ const envSchema = z.object({
   CLAUDE_API_KEY: z.string(),
   OPENAI_API_KEY: z.string(),
   TENDERLAND_API_KEY: z.string(),
+  GEMINI_API_KEY: z.string(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -27,7 +28,8 @@ export function validateEnv(): Env {
     'MONGO_URI',
     'CLAUDE_API_KEY',
     'OPENAI_API_KEY',
-    'TENDERLAND_API_KEY'
+    'TENDERLAND_API_KEY',
+    'GEMINI_API_KEY'
   ];
 
   for (const varName of requiredVars) {
