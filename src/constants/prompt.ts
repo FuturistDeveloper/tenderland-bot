@@ -134,3 +134,89 @@ export const PROMPT = {
 Пример работы с документом
 Когда ты получишь документы, тщательно проанализируй их содержимое и извлеки необходимую информацию согласно указанной структуре. Ответ должен содержать только JSON-объект без вводных слов, комментариев или пояснений.`
 }
+
+export const filePaths = [
+  // {
+  //   regNumber: "32514847329",
+  //   paths: [
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514847329\\Извещение о закупке № 32514847329.html',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514847329\\21 запрос котировок орнитологический комплекс (для СМП).docx'
+  //   ]
+  // },
+  {
+    regNumber: "32514850395",
+    paths: [
+      // 'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514850395\\ЗК_МСП_специальные средства_СФО ЦООП (Бийск).docx',
+      'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514850395\\Извещение о закупке № 32514850395.html'
+    ]
+  },
+  {
+    regNumber: "0139200000125006859",
+    paths: [
+      // 'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0139200000125006859\\Описание объекта закупки Ц00-04980-25-ЭА.docx',
+      // 'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0139200000125006859\\Обоснование НМЦ Ц00-04980-25-ЭА Обоснование НМЦ (Копия Обоснование НМЦК 1 ЭА) (07.05.2025 9_49_03).xlsx',
+      // 'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0139200000125006859\\Проект контракта Ц00-04980-25-ЭА Проект контракта (30.04.2025 15_51_53).docx',
+      // 'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0139200000125006859\\Требование к содержанию, составу заявки на участие в закупке Ц00-04980-25-ЭА.docx',
+      'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0139200000125006859\\Печатная форма извещения 39433098.html'
+    ]
+  },
+  {
+    regNumber: "32514850391",
+    paths: [
+      'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514850391\\Извещение о закупке № 32514850391.html',
+      // 'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514850391\\ЗК_МСП_бинокли и комплектующие_Ростовский ЦООТЭК.docx'
+    ]
+  },
+  // {
+  //   regNumber: "0372200174325000009",
+  //   paths: [
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200174325000009\\Прил.3_Требования_к_заявке__(Преимущ.).doc',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200174325000009\\Прил.3__ООЗ.docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200174325000009\\Печатная форма извещения 39482579.html',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200174325000009\\НМЦК_прил._2_(1).docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200174325000009\\Прил.4_Проект_контракта.doc',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200174325000009\\Автоматический контроль.pdf'
+  //   ]
+  // },
+  // {
+  //   regNumber: "0319100025325000040",
+  //   paths: [
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0319100025325000040\\Обоснование НМЦК.xlsx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0319100025325000040\\проект контракта.docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0319100025325000040\\Реквизиты.docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0319100025325000040\\Печатная форма извещения 39458272.html',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0319100025325000040\\Инструкция по заполнению заявки (2).docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0319100025325000040\\Требования к содержанию, составу заявки на участие.docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0319100025325000040\\ООЗ.docx'
+  //   ]
+  // },
+  // {
+  //   regNumber: "32514838106",
+  //   paths: [
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514838106\\Извещение о закупке № 32514838106.html',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514838106\\НМЦК_ГОСУДАРСТВЕННОЕ-АВТОНОМНОЕ-УЧРЕЖДЕНИЕ-ДОПОЛНИТЕЛЬНОГО-ОБРАЗОВАНИЯ-РЕСПУБЛИКИ-КОМИ--РЕСПУБЛИКАНСКИЙ-ЦЕНТР-ДОПОЛНИТЕЛЬНОГО-ОБРАЗОВАНИЯ- (1) (1).xlsx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\32514838106\\15.05.2025_ЭА_поставка товара_ГАУДО РК РЦДО.doc'
+  //   ]
+  // },
+  // {
+  //   regNumber: "0372200047925000241",
+  //   paths: [
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\Печатная форма извещения 39483793.html',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\2._Обоснование_НМЦК[1] (версия 2).docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\1._Описание_объекта_закупки[2].docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\Автоматический контроль.pdf',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\4._Проект_контракта_(1) (версия 2).docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\3._Требования_к_содержанию_составу_заявки (версия 2).docx',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\Автоматический контроль (версия 2).pdf',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\Печатная форма извещения 39530580 (версия 2).html',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0372200047925000241\\1._Описание_объекта_закупки[3] (версия 2).docx'
+  //   ]
+  // },
+  // {
+  //   regNumber: "0801200000125000007",
+  //   paths: [
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0801200000125000007\\Приложение № 2  Описание объекта закупки.docx.zip',
+  //     'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\0801200000125000007\\Приложение № 3 проект ГК.docx.zip',
+  //   ]
+  // }
+];

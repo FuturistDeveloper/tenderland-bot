@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import express from 'express';
+import cron from 'node-cron';
 import { getConfig } from './config/config';
 import { connectDB } from './config/database';
 import { Tender } from './models/Tender';
@@ -11,7 +12,7 @@ import { validateEnv } from './utils/env';
 dotenv.config();
 
 export const ENV = validateEnv();
-const config = getConfig();
+export const config = getConfig();
 
 const app = express();
 app.use(express.json());
@@ -24,106 +25,35 @@ connectDB();
 
 botService.start();
 
-// cron.schedule(config.cronSchedule, async () => {
-const func = async () => {
-  // try {
-  //   console.log(`Running TenderlandService cron job at ${new Date().toISOString()} in ${config.environment} environment`);
-  //   const task = await tenderlandService.createTaskForGettingTenders();
+const getAnalyticsForTenders = async () => {
+  try {
+    const tenders = await Tender.find();
 
-  //   console.log(task);
+    if (!tenders) {
+      console.error('Tender not found');
+      return;
+    }
 
-  //   if (!task) {
-  //     console.error('Error getting task');
-  //     return;
-  //   }
+    for (const tender of tenders) {
+      await tenderlandService.downloadZipFileAndUnpack(tender.regNumber, tender.tender.files);
+    }
 
-  //   const tenders = await tenderlandService.getTendersByTaskId(task.Id);
-
-  //   if (!tenders) {
-  //     console.error('Error getting tenders');
-  //     return;
-  //   }
-
-  //   tenders.items.forEach(async (tender) => {
-  //     const tenderData = tender.tender;
-  //     try {
-  //       await Tender.findOneAndUpdate(
-  //         { regNumber: tenderData.regNumber },
-  //         {
-  //           $setOnInsert: {
-  //             regNumber: tenderData.regNumber,
-  //             tender: {
-  //               ordinalNumber: tender.ordinalNumber,
-  //               name: tenderData.name,
-  //               beginPrice: tenderData.beginPrice,
-  //               publishDate: tenderData.publishDate,
-  //               endDate: tenderData.endDate,
-  //               region: tenderData.region,
-  //               typeName: tenderData.typeName,
-  //               lotCategories: tenderData.lotCategories,
-  //               files: tenderData.files,
-  //               module: tenderData.module,
-  //               etpLink: tenderData.etpLink,
-  //               customers: tenderData.customers
-  //             },
-  //             isProcessed: false,
-  //             analytics: null,
-  //             reports: null
-  //           }
-  //         },
-  //         {
-  //           upsert: true,
-  //           new: true,
-  //           runValidators: true,
-  //           includeResultMetadata: true,
-  //         },
-  //       );
-  //     } catch (error) {
-  //       console.error('Error processing tender:', tender.ordinalNumber, error);
-  //     }
-  //   });
-  // } catch (err) {
-  //   console.error('Error in TenderlandService cron job:', err);
-  // }
-
-  const tender = await Tender.findOne({
-    regNumber: "0372200174325000009"
-  })
-
-  if(!tender) {
-    console.error('Tender not found');
-    return;
+  } catch (err) {
+    console.error('Error in TenderlandService cron job:', err);
   }
-
-  // const filePaths = await tenderlandService.downloadZipFileAndUnpack(tender.tender.files);
-  // console.log(filePaths);
-
-  const filePaths = [
-    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Прил.3_Требования_к_заявке__(Преимущ.).doc',
-    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Прил.3__ООЗ.docx',
-    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Печатная форма извещения 39482579.html',
-    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\НМЦК_прил._2_(1).docx',
-    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Прил.4_Проект_контракта.doc',
-    'C:\\Users\\user\\Documents\\GitHub\\tenderland-bot\\tenderland\\Автоматический контроль.pdf'
-  ]
-  
-  const response =  await claudeService.generateResponse(filePaths);
-
-  console.log(response);
-
-  tender.claudeResponse = response;
-  await tender.save();
-
-  await tenderlandService.cleanupExtractedFiles(filePaths);
 };
 
-func();
+getAnalyticsForTenders();
+
+cron.schedule(config.cronSchedule, async () => {
+  console.log('Cron job started');
+});
 
 app.get('/', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     message: 'Bot is running',
-    environment: config.environment
+    environment: config.environment,
   });
 });
 
