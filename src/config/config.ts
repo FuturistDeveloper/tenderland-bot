@@ -65,8 +65,8 @@ const localConfig: Config = {
   cronSchedule: '*/1 * * * *', // Run every minute in test
   tenderland: {
     autosearchId: 249612, // Replace with your test autosearch ID
-    batchSize: 15,
-    limit: 15,
+    batchSize: 100,
+    limit: 100,
     orderBy: 'asc'
   },
   claude: {

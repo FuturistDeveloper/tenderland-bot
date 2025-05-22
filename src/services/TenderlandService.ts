@@ -1,11 +1,10 @@
-import { delay } from '@/utils/delay';
 import AdmZip from 'adm-zip';
 import axios, { AxiosInstance } from 'axios';
 import fs from 'fs';
 import htmlPdf from 'html-pdf';
 import mammoth from 'mammoth';
 import path from 'path';
-import { config, ENV } from '..';
+import { ENV } from '..';
 import { Config } from '../config/config';
 import { Tender } from '../models/Tender';
 import {
@@ -15,12 +14,11 @@ import {
   TendersResponseSchema,
 } from '../schemas/tenderland.schema';
 import { handleApiError } from '../utils/error-handler';
-import { ClaudeService } from './ClaudeService';
 
 const textract = require('textract');
 const xlsx = require('xlsx');
 
-const claudeService = new ClaudeService(config);
+// const claudeService = new ClaudeService(config);
 
 interface IFilePath {
   regNumber: string;
@@ -54,8 +52,6 @@ export class TenderlandService {
       `Running TenderlandService cron job at ${new Date().toISOString()} in ${this.config.environment} environment`,
     );
     const task = await this.createTaskForGettingTenders();
-
-    console.log(task);
 
     if (!task) {
       console.error('Error getting task');
@@ -118,33 +114,37 @@ export class TenderlandService {
     }
   }
 
-  async processTender(filePaths: IFilePath[]): Promise<void> {
-    for (const filePath of filePaths) {
-      // console.log('Waiting 10 minutes');
-      console.log('Processing', filePath.regNumber);
-      const response = await claudeService.generateResponse(filePath.paths);
-      console.log(response);
-      const tender = await Tender.findOne({ regNumber: filePath.regNumber });
-      if (!tender) {
-        console.error('Tender not found', filePath.regNumber);
-        return;
-      }
-      tender.claudeResponse = response;
-      tender.isProcessed = true;
+  //   async processTender(filePaths: IFilePath[]): Promise<void> {
+  //     for (const filePath of filePaths) {
+  //       // console.log('Waiting 10 minutes');
+  //       console.log('Processing', filePath.regNumber);
+  //       const response = await claudeService.generateResponse(filePath.paths);
+  //       console.log(response);
+  //       const tender = await Tender.findOne({ regNumber: filePath.regNumber });
+  //       if (!tender) {
+  //         console.error('Tender not found', filePath.regNumber);
+  //         return;
+  //       }
+  //       tender.claudeResponse = response;
+  //       tender.isProcessed = true;
 
-      await tender.save();
+  //       await tender.save();
 
-      await delay(60 * 1000);
-    }
+  //       await delay(60 * 1000);
+  //     }
 
-    // await this.cleanupExtractedFiles(filePaths.map((filePath) => filePath.paths));
-  }
+  //     // await this.cleanupExtractedFiles(filePaths.map((filePath) => filePath.paths));
+  //   }
 
   async createTaskForGettingTenders(): Promise<CreateTaskResponse | undefined> {
     try {
+      console.log(
+        `Creating task for getting tenders with autosearchId=${this.config.tenderland.autosearchId} and limit=${this.config.tenderland.limit} and batchSize=${this.config.tenderland.batchSize}`,
+      );
       const response = await this.axiosInstance.get(
         `/Export/Create?autosearchId=${this.config.tenderland.autosearchId}&limit=${this.config.tenderland.limit}&batchSize=${this.config.tenderland.batchSize}&format=json`,
       );
+      console.log('Task created successfully');
       return CreateTaskResponseSchema.parse(response.data);
     } catch (error) {
       handleApiError(error, 'createTaskForGettingTenders');
@@ -303,6 +303,72 @@ export class TenderlandService {
           } catch (error) {
             console.error(`Failed to copy file ${file}:`, error);
           }
+        } else if (ext === '.zip') {
+          try {
+            console.log(`Unpacking zip file to converted directory: ${file}`);
+            const zipContent = new AdmZip(file);
+            const extractedFromZip: string[] = [];
+
+            // Extract all files from zip directly to converted directory
+            for (const entry of zipContent.getEntries()) {
+              if (!entry.isDirectory) {
+                const fileName = path.basename(entry.entryName);
+                const tempPath = path.join(originalPath, `temp_${fileName}`);
+
+                // Extract file synchronously to temp location first
+                const content = entry.getData();
+                fs.writeFileSync(tempPath, content);
+                extractedFromZip.push(tempPath);
+                console.log(`Extracted from zip to temp location: ${tempPath}`);
+              }
+            }
+
+            // Process each extracted file
+            for (const extractedFile of extractedFromZip) {
+              const extractedExt = path.extname(extractedFile).toLowerCase();
+              const extractedFileName = path.basename(extractedFile);
+              const finalFileName = extractedFileName.startsWith('temp_')
+                ? extractedFileName.substring(5)
+                : extractedFileName;
+
+              if (['.doc', '.docx', '.xls', '.xlsx'].includes(extractedExt)) {
+                try {
+                  console.log(`Processing extracted file: ${extractedFile}`);
+                  const convertedFile = await this.convertWordToPdf(extractedFile);
+                  const finalPath = path.join(convertedPath, path.basename(convertedFile));
+
+                  if (convertedFile !== finalPath) {
+                    await fs.promises.rename(convertedFile, finalPath);
+                  }
+
+                  convertedFiles.push(finalPath);
+                  console.log(`Successfully converted and moved extracted file to: ${finalPath}`);
+                } catch (error) {
+                  console.error(`Failed to convert extracted file ${extractedFile}:`, error);
+                }
+              } else if (['.html', '.htm', '.pdf'].includes(extractedExt)) {
+                try {
+                  const finalPath = path.join(convertedPath, finalFileName);
+                  await fs.promises.copyFile(extractedFile, finalPath);
+                  convertedFiles.push(finalPath);
+                  console.log(`Copied extracted file to: ${finalPath}`);
+                } catch (error) {
+                  console.error(`Failed to copy extracted file ${extractedFile}:`, error);
+                }
+              } else {
+                console.log(`Skipping unsupported file type from zip: ${extractedFile}`);
+              }
+
+              // Clean up temp file
+              try {
+                fs.unlinkSync(extractedFile);
+              } catch (error) {
+                console.error(`Failed to clean up temp file ${extractedFile}:`, error);
+              }
+            }
+          } catch (error) {
+            console.error(`Failed to process zip file ${file}:`, error);
+          }
         } else {
           console.log(`Skipping unsupported file type: ${file}`);
         }
@@ -335,7 +401,7 @@ export class TenderlandService {
 
     // Remove the directory
     if (fs.existsSync(extractPath)) {
-      fs.rmdirSync(extractPath);
+      fs.rmdirSync(extractPath, { recursive: true });
     }
   }
 

@@ -3,68 +3,87 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { IAnalytics } from './Analytics';
 import { IReport } from './Report';
 
-export interface ITender extends Document {
-    regNumber: string;
-    tender: {
-        ordinalNumber: number;
-        name: string;
-        beginPrice: number;
-        publishDate: Date;
-        endDate: Date;
-        region: string;
-        typeName: string;
-        lotCategories?: string[];
-        files: string;
-        module: string;
-        etpLink: string;
-        customers: Array<{
-            lotCustomerShortName: string;
-        }>;
-    };
-    claudeResponse: TenderResponse | null;
-    isProcessed: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    analytics: IAnalytics | null;
-    reports: IReport[] | null;
+interface IAnalyzedFile {
+  analyzedFile: string;
+  response: string;
 }
 
-const TenderSchema = new Schema<ITender>({
+export interface ITender extends Document {
+  regNumber: string;
+  tender: {
+    ordinalNumber: number;
+    name: string;
+    beginPrice: number;
+    publishDate: Date;
+    endDate: Date;
+    region: string;
+    typeName: string;
+    lotCategories?: string[];
+    files: string;
+    module: string;
+    etpLink: string;
+    customers: Array<{
+      lotCustomerShortName: string;
+    }>;
+  };
+  claudeResponse: TenderResponse | null;
+  analyzedFiles: IAnalyzedFile[];
+  isProcessed: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  analytics: IAnalytics | null;
+  reports: IReport[] | null;
+}
+
+const TenderSchema = new Schema<ITender>(
+  {
     regNumber: { type: String, required: true },
     tender: {
-        ordinalNumber: { type: Number, required: true },
-        name: { type: String, required: true },
-        beginPrice: { type: Number, required: true },
-        publishDate: { type: Date, required: true },
-        endDate: { type: Date, required: true },
-        region: { type: String, required: true },
-        typeName: { type: String, required: true },
-        lotCategories: [{ type: String }],
-        files: { type: String, required: true },
-        module: { type: String, required: true },
-        etpLink: { type: String, required: true },
-        customers: [{
-            lotCustomerShortName: { type: String, required: true }
-        }],
+      ordinalNumber: { type: Number, required: true },
+      name: { type: String, required: true },
+      beginPrice: { type: Number, required: true },
+      publishDate: { type: Date, required: true },
+      endDate: { type: Date, required: true },
+      region: { type: String, required: true },
+      typeName: { type: String, required: true },
+      lotCategories: [{ type: String }],
+      files: { type: String, required: true },
+      module: { type: String, required: true },
+      etpLink: { type: String, required: true },
+      customers: [
+        {
+          lotCustomerShortName: { type: String, required: true },
+        },
+      ],
     },
     isProcessed: { type: Boolean, default: false },
+    analyzedFiles: [
+      {
+        analyzedFile: { type: String, required: true },
+        response: { type: String, required: true },
+      },
+    ],
     analytics: {
-        type: Schema.Types.ObjectId,
-        ref: 'Analytics',
-        default: null
+      type: Schema.Types.ObjectId,
+      ref: 'Analytics',
+      default: null,
     },
-    reports: [{
+    reports: [
+      {
         type: Schema.Types.ObjectId,
         ref: 'Report',
-        default: null
-    }],
+        default: null,
+      },
+    ],
     claudeResponse: {
-        type: Object,
-        default: null
-    }
-}, {
-    timestamps: true
-});
+      type: Object,
+      default: null,
+    },
+  },
+  {
+    timestamps: true,
+  },
+);
 
 TenderSchema.index({ regNumber: 1, ordinalNumber: 1 }, { unique: true });
 

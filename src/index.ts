@@ -5,7 +5,7 @@ import { getConfig } from './config/config';
 import { connectDB } from './config/database';
 import { Tender } from './models/Tender';
 import { BotService } from './services/BotService';
-import { ClaudeService } from './services/ClaudeService';
+import { TenderAnalyticsService } from './services/TenderAnalyticsService';
 import { TenderlandService } from './services/TenderlandService';
 import { validateEnv } from './utils/env';
 
@@ -17,8 +17,8 @@ export const config = getConfig();
 const app = express();
 app.use(express.json());
 
-const claudeService = new ClaudeService(config);
 const tenderlandService = new TenderlandService(config);
+const tenderAnalyticsService = new TenderAnalyticsService(config);
 const botService = new BotService();
 
 connectDB();
@@ -27,26 +27,31 @@ botService.start();
 
 const getAnalyticsForTenders = async () => {
   try {
-    const tenders = await Tender.find();
+    await tenderlandService.getTenders();
 
-    if (!tenders) {
-      console.error('Tender not found');
-      return;
-    }
+    await Tender.find({ isProcessed: false })
+      .cursor()
+      .eachAsync(async (tender) => {
+        const files = await tenderlandService.downloadZipFileAndUnpack(
+          tender.regNumber,
+          tender.tender.files,
+        );
+        
+        await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
 
-    for (const tender of tenders) {
-      await tenderlandService.downloadZipFileAndUnpack(tender.regNumber, tender.tender.files);
-    }
+        await tenderlandService.cleanupExtractedFiles(files);
+      });
 
+    // await tenderAnalyticsService.analyzeAllTenders(TENDERS);
   } catch (err) {
-    console.error('Error in TenderlandService cron job:', err);
+    console.error('Error in analytics job:', err);
   }
 };
 
 getAnalyticsForTenders();
 
 cron.schedule(config.cronSchedule, async () => {
-  console.log('Cron job started');
+  // console.log('Cron job started');
 });
 
 app.get('/', (req, res) => {
