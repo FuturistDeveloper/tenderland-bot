@@ -12,11 +12,24 @@
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.51.0",
+    "@google/genai": "^1.0.1",
+    "@google/generative-ai": "^0.2.1",
+    "@types/adm-zip": "^0.5.7",
+    "@types/node-cron": "^3.0.11",
+    "adm-zip": "^0.5.16",
+    "axios": "^1.9.0",
+    "chalk": "^5.4.1",
+    "docx-to-pdf": "^1.1.0",
     "dotenv": "^16.4.1",
     "express": "^4.18.2",
+    "html-pdf": "^3.0.1",
+    "mammoth": "^1.9.0",
     "mongodb": "^6.16.0",
     "mongoose": "^8.1.1",
+    "node-cron": "^4.0.5",
     "telegraf": "^4.15.3",
+    "textract": "^2.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

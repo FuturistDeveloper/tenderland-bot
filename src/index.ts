@@ -1,74 +1,70 @@
 import dotenv from 'dotenv';
 import express from 'express';
-import { Telegraf } from 'telegraf';
-import { z } from 'zod';
+import cron from 'node-cron';
+import { getConfig } from './config/config';
 import { connectDB } from './config/database';
-import { User } from './models/User';
+import { Tender } from './models/Tender';
+import { BotService } from './services/BotService';
+import { TenderAnalyticsService } from './services/TenderAnalyticsService';
+import { TenderlandService } from './services/TenderlandService';
+import { validateEnv } from './utils/env';
 
 dotenv.config();
 
-const envSchema = z.object({
-  PORT: z.string().transform(Number),
-  BOT_TOKEN: z.string(),
-  MONGO_URI: z.string(),
-  TENDERLAND_API_KEY: z.string(),
-});
-
-export const ENV = envSchema.parse(process.env);
+export const ENV = validateEnv();
+export const config = getConfig();
 
 const app = express();
 app.use(express.json());
 
-const bot = new Telegraf(ENV.BOT_TOKEN);
+const tenderlandService = new TenderlandService(config);
+const tenderAnalyticsService = new TenderAnalyticsService(config);
+const botService = new BotService();
 
 connectDB();
 
-bot.use(async (ctx, next) => {
-  if (ctx.from) {
-    await User.findOneAndUpdate(
-      { telegramId: ctx.from.id },
-      {
-        telegramId: ctx.from.id,
-        username: ctx.from.username,
-        firstName: ctx.from.first_name,
-        lastName: ctx.from.last_name,
-      },
-      { upsert: true, new: true },
-    );
+botService.start();
+
+const getAnalyticsForTenders = async () => {
+  try {
+    await tenderlandService.getTenders();
+
+    await Tender.find({ isProcessed: false })
+      .cursor()
+      .eachAsync(async (tender) => {
+        const files = await tenderlandService.downloadZipFileAndUnpack(
+          tender.regNumber,
+          tender.tender.files,
+        );
+        
+        await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
+
+        await tenderlandService.cleanupExtractedFiles(files);
+      });
+
+    // await tenderAnalyticsService.analyzeAllTenders(TENDERS);
+  } catch (err) {
+    console.error('Error in analytics job:', err);
   }
-  return next();
-});
+};
 
-bot.command('start', (ctx) => {
-  ctx.reply('Welcome to the bot! 👋');
-});
+getAnalyticsForTenders();
 
-bot.command('help', (ctx) => {
-  ctx.reply('Available commands:\n/start - Start the bot\n/help - Show this help message');
+cron.schedule(config.cronSchedule, async () => {
+  // console.log('Cron job started');
 });
-
-bot.catch((err, ctx) => {
-  console.error(`Error for ${ctx.updateType}:`, err);
-  ctx.reply('An error occurred while processing your request.');
-});
-
-bot
-  .launch()
-  .then(() => {
-    console.log('Bot started successfully');
-  })
-  .catch((err) => {
-    console.error('Failed to start bot:', err);
-    process.exit(1);
-  });
 
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', message: 'Bot is running' });
+  res.json({
+    status: 'ok',
+    message: 'Bot is running',
+    environment: config.environment,
+  });
 });
 
 app.listen(ENV.PORT, () => {
-  console.log(`Server is running on port ${ENV.PORT}`);
+  console.log(`Server is running on port ${ENV.PORT} in ${config.environment} environment`);
 });
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => botService.stop('SIGINT'));
+process.once('SIGTERM', () => botService.stop('SIGTERM'));
