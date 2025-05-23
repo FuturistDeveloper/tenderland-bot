@@ -87,6 +87,19 @@ export class GeminiService {
       return null;
     }
   }
+
+  public async generateResponseToYandex(text: string): Promise<string | null> {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-pro-preview-05-06',
+        contents: [PROMPT.geminiYandex + '\n\n' + text],
+      });
+      return response.text || null;
+    } catch (error) {
+      console.error('Error generating response to Yandex:', error);
+      return 'NOTHING RESPONSE';
+    }
+  }
 }
 
 function parseResponse(text: string): TenderResponse {
