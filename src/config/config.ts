@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { logConfig } from '../utils/logger';
+// import { logConfig } from '../utils/logger';
 
 export const configSchema = z.object({
   environment: z.enum(['development', 'production', 'local']),
@@ -8,16 +8,16 @@ export const configSchema = z.object({
     autosearchId: z.number(),
     batchSize: z.number(),
     limit: z.number(),
-    orderBy: z.enum(['asc', 'desc']).default('desc')
+    orderBy: z.enum(['asc', 'desc']).default('desc'),
   }),
   claude: z.object({
     model: z.string(),
-    maxTokens: z.number()
+    maxTokens: z.number(),
   }),
   gemini: z.object({
     model: z.string(),
-    maxTokens: z.number()
-  })
+    maxTokens: z.number(),
+  }),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -29,16 +29,16 @@ const developmentConfig: Config = {
     autosearchId: 249612, // Replace with your development autosearch ID
     batchSize: 100,
     limit: 1000,
-    orderBy: 'desc'
+    orderBy: 'desc',
   },
   claude: {
     model: 'claude-3-7-sonnet-20250219',
-    maxTokens: 20000
+    maxTokens: 20000,
   },
   gemini: {
     model: 'gemini-pro',
-    maxTokens: 20000
-  }
+    maxTokens: 20000,
+  },
 };
 
 const productionConfig: Config = {
@@ -48,16 +48,16 @@ const productionConfig: Config = {
     autosearchId: 249612, // Replace with your production autosearch ID
     batchSize: 100,
     limit: 1000,
-    orderBy: 'desc'
+    orderBy: 'desc',
   },
   claude: {
     model: 'claude-3-7-sonnet-20250219',
-    maxTokens: 20000
+    maxTokens: 20000,
   },
   gemini: {
     model: 'gemini-pro',
-    maxTokens: 20000
-  }
+    maxTokens: 20000,
+  },
 };
 
 const localConfig: Config = {
@@ -67,21 +67,21 @@ const localConfig: Config = {
     autosearchId: 249612, // Replace with your test autosearch ID
     batchSize: 100,
     limit: 100,
-    orderBy: 'asc'
+    orderBy: 'asc',
   },
   claude: {
     model: 'claude-3-7-sonnet-20250219',
-    maxTokens: 20000
+    maxTokens: 20000,
   },
   gemini: {
     model: 'gemini-pro',
-    maxTokens: 20000
-  }
+    maxTokens: 20000,
+  },
 };
 
 export function getConfig(): Config {
   const env = process.env.NODE_ENV || 'development';
-  
+
   const config = (() => {
     switch (env) {
       case 'production':
@@ -93,6 +93,6 @@ export function getConfig(): Config {
     }
   })();
 
-  logConfig(config);
+  // logConfig(config);
   return config;
-} 
+}
