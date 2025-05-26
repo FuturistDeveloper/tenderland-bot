@@ -1,7 +1,7 @@
-import { TenderResponse } from '@/services/ClaudeService';
 import mongoose, { Document, Schema } from 'mongoose';
 import { IAnalytics } from './Analytics';
 import { IReport } from './Report';
+import { TenderResponse } from '../services/ClaudeService';
 
 interface IAnalyzedFile {
   analyzedFile: string;
