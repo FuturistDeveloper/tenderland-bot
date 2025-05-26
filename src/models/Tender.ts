@@ -31,6 +31,19 @@ export interface ITender extends Document {
   isProcessed: boolean;
   createdAt: Date;
   updatedAt: Date;
+  findRequests: {
+    itemName: string;
+    findRequest: string[];
+    parsedRequest: {
+      requestName: string;
+      responseFromWebsites: {
+        title: string;
+        snippet: string;
+        link: string;
+        content?: string;
+      }[];
+    }[];
+  }[];
   analytics: IAnalytics | null;
   reports: IReport[] | null;
 }
@@ -79,6 +92,25 @@ const TenderSchema = new Schema<ITender>(
       type: Object,
       default: null,
     },
+    findRequests: [
+      {
+        itemName: { type: String, required: true },
+        findRequest: { type: Array, required: true },
+        parsedRequest: [
+          {
+            requestName: { type: String, required: true },
+            responseFromWebsites: [
+              {
+                title: { type: String, required: true },
+                snippet: { type: String, required: true },
+                link: { type: String, required: true },
+                content: { type: String },
+              },
+            ],
+          },
+        ],
+      },
+    ],
   },
   {
     timestamps: true,
