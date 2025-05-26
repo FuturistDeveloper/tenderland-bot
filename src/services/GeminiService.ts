@@ -19,7 +19,7 @@ export class GeminiService {
     this.ai = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
   }
 
-  public async generateResponse(filePath: string): Promise<string> {
+  public async generateResponse(filePath: string, prompt: string = PROMPT.gemini): Promise<string> {
     try {
       const fileName = path.basename(filePath) || '';
 
@@ -46,7 +46,7 @@ export class GeminiService {
       }
 
       // Add the file to the contents.
-      const content: any = [PROMPT.gemini]; // TODO: fix type
+      const content: any = [prompt]; // TODO: fix type
 
       if (file.uri && file.mimeType) {
         const fileContent = createPartFromUri(file.uri, file.mimeType);
@@ -99,6 +99,24 @@ export class GeminiService {
     } catch (error) {
       console.error('Error generating response to Yandex:', error);
       return 'NOTHING RESPONSE';
+    }
+  }
+
+  public async getActualContentFromTheWebsite(text: string): Promise<string | null> {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [text],
+        config: {
+          temperature: 0.1,
+          topP: 0.95,
+          topK: 40,
+        },
+      });
+      return response.text || null;
+    } catch (error) {
+      console.error('Error generating response:', error);
+      return null;
     }
   }
 }

@@ -1,6 +1,10 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
 import { JSDOM } from 'jsdom';
+import * as fs from 'fs';
+import * as path from 'path';
+import { GeminiService } from './GeminiService';
+import { Config } from '../config/config';
 
 dotenv.config();
 
@@ -27,7 +31,7 @@ export class GoogleSearchService {
     }
   }
 
-  private async fetchWebpageContent(url: string): Promise<string> {
+  public async fetchWebpageContent(url: string): Promise<string> {
     try {
       const response = await axios.get(url, {
         timeout: 5000, // 5 second timeout
@@ -66,6 +70,62 @@ export class GoogleSearchService {
     }
   }
 
+  public async downloadHtml(url: string, outputPath: string): Promise<string | null> {
+    try {
+      const response = await axios.get(url, {
+        timeout: 5000,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        },
+      });
+
+      // Create html directory if it doesn't exist
+      const htmlDir = path.join(process.cwd(), 'html');
+      if (!fs.existsSync(htmlDir)) {
+        fs.mkdirSync(htmlDir, { recursive: true });
+      }
+
+      // Ensure the output path is in the html directory
+      const fullOutputPath = path.join(htmlDir, path.basename(outputPath));
+
+      // Write the file
+      fs.writeFileSync(fullOutputPath, response.data);
+
+      console.log('Successfully downloaded HTML to ' + fullOutputPath);
+      return fullOutputPath;
+    } catch (error) {
+      console.error('Failed to download HTML from ' + url);
+      return null;
+    }
+  }
+
+  public async downloadAndAnalyzeWithGemini(
+    url: string,
+    outputPath: string,
+    config: Config,
+  ): Promise<string> {
+    try {
+      // First download the HTML
+      const htmlContent = await this.downloadHtml(url, outputPath);
+
+      if (!htmlContent) {
+        throw new Error('Failed to download HTML content');
+      }
+
+      // Initialize Gemini service
+      const geminiService = new GeminiService(config);
+
+      // Analyze the downloaded file with Gemini
+      const analysis = await geminiService.generateResponse(outputPath);
+
+      return analysis;
+    } catch (error) {
+      console.error('Error in downloadAndAnalyzeWithGemini:', error);
+      throw error;
+    }
+  }
+
   // 10 results per query
   async search(
     query: string,
@@ -98,6 +158,8 @@ export class GoogleSearchService {
 
       //   return await Promise.all(contentPromises);
       // }
+
+      console.log('Results', results);
 
       return results;
     } catch (error) {

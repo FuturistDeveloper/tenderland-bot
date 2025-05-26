@@ -4,7 +4,7 @@ import { Config } from '../config/config';
 import { Tender } from '../models/Tender';
 import { GeminiService } from './GeminiService';
 import { TenderResponse } from './ClaudeService';
-import { GoogleSearchService } from './googleSearchService';
+import { GoogleSearchService } from './GoogleSearchService';
 
 interface AnalyzedFile {
   analyzedFile: string;
@@ -121,7 +121,6 @@ export class TenderAnalyticsService {
     // Наименование товара: ${name}
     // Технические характеристики товара: ${specificationsTextString}
     // `;
-
     //       const itemResponse = await this.geminiService.generateFindRequest(itemText);
     //       if (itemResponse) {
     //         await Tender.findOneAndUpdate(
@@ -130,36 +129,63 @@ export class TenderAnalyticsService {
     //         );
     //       }
     //     }
-    const tenderAfterUpdate = await Tender.findOne({ regNumber });
-    if (!tenderAfterUpdate) {
-      console.error('Tender not found');
+    // const tenderAfterUpdate = await Tender.findOne({ regNumber });
+    // if (!tenderAfterUpdate) {
+    //   console.error('Tender not found');
+    //   return;
+    // }
+    // const requests = tenderAfterUpdate.findRequests;
+    // requests.forEach((req, i) => {
+    //   const { findRequest } = req;
+    //   findRequest.forEach(async (findRequestName) => {
+    //     const results = await this.googleSearch.search(findRequestName);
+    //     await Tender.findOneAndUpdate(
+    //       { regNumber },
+    //       {
+    //         $push: {
+    //           [`findRequests.${i}.parsedRequest`]: {
+    //             requestName: findRequestName,
+    //             responseFromWebsites: results,
+    //           },
+    //         },
+    //       },
+    //       { new: true },
+    //     );
+    //     console.log('Updated', findRequestName);
+    //   });
+    // });
+
+    const outputPath = 'binokl-levenhuk-vegas-ed.html';
+
+    const path = await this.googleSearch.downloadHtml(
+      'https://optizona.by/binokli/binokl-levenhuk-vegas-ed-12x50.html',
+      outputPath,
+    );
+
+    if (!path) {
+      console.error('Failed to download HTML');
       return;
     }
 
-    const requests = tenderAfterUpdate.findRequests;
+    const response = await this.geminiService.generateResponse(
+      path,
+      'Проанализируй и забери всю актуальную информацию по товару и характеристики с контента который я предоставлю',
+    );
 
-    requests.forEach((req, i) => {
-      const { findRequest } = req;
+    console.log(response);
 
-      findRequest.forEach(async (findRequestName) => {
-        const results = await this.googleSearch.search(findRequestName);
+    // Delete downloaded file after analysis
+    try {
+      fs.unlinkSync(path);
+      console.log('Successfully deleted downloaded file:', path);
+    } catch (error) {
+      console.error('Error deleting file:', error);
+    }
 
-        await Tender.findOneAndUpdate(
-          { regNumber },
-          {
-            $push: {
-              [`findRequests.${i}.parsedRequest`]: {
-                requestName: findRequestName,
-                responseFromWebsites: results,
-              },
-            },
-          },
-          { new: true },
-        );
-        console.log('Updated', findRequestName);
-      });
-    });
-
-    console.log('Everything is done');
+    // const response = await this.geminiService.getActualContentFromTheWebsite(
+    //   'Проанализируй и забери всю актуальную информацию и характеристики с контента который я предоставлю для товара Штатив Falcon Eyes Travel Line VT2:' +
+    //     content,
+    // );
+    // console.log('Content', response);
   }
 }

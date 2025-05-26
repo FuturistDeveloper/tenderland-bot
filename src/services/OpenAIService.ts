@@ -9,7 +9,7 @@ export class OpenAIService {
 
   constructor(config: Config) {
     this.config = config;
-    
+
     // Validate API key format
     if (!ENV.OPENAI_API_KEY || !ENV.OPENAI_API_KEY.startsWith('sk-')) {
       throw new Error('Invalid OpenAI API key format. API key should start with "sk-"');
@@ -23,28 +23,28 @@ export class OpenAIService {
       const response = await axios.post(
         this.apiUrl,
         {
-          model: "gpt-4-turbo-preview",
+          model: 'gpt-4-turbo-preview',
           messages: [
             {
-              role: "system",
-              content: "You are a helpful assistant."
+              role: 'system',
+              content: 'You are a helpful assistant.',
             },
             {
-              role: "user",
-              content: prompt
-            }
+              role: 'user',
+              content: prompt,
+            },
           ],
           temperature: 0.7,
-          max_tokens: 1000
+          max_tokens: 1000,
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`
-          }
-        }
+            Authorization: `Bearer ${this.apiKey}`,
+          },
+        },
       );
-      
+
       console.log('OpenAI response:', response.data);
       return response.data;
     } catch (error) {
@@ -52,16 +52,16 @@ export class OpenAIService {
         console.error('Error details:', {
           message: error.message,
           status: error.response?.status,
-          data: error.response?.data
+          data: error.response?.data,
         });
       } else if (error instanceof Error) {
         console.error('Error details:', {
           message: error.message,
           name: error.name,
-          stack: error.stack
+          stack: error.stack,
         });
       }
       throw error;
     }
   }
-} 
+}
