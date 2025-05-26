@@ -88,11 +88,12 @@ export class GeminiService {
     }
   }
 
-  public async generateResponseToYandex(text: string): Promise<string | null> {
+  public async generateFindRequest(text: string): Promise<string | null> {
     try {
+      console.log('Generating find request');
       const response = await this.ai.models.generateContent({
         model: 'gemini-2.5-pro-preview-05-06',
-        contents: [PROMPT.geminiYandex + '\n\n' + text],
+        contents: [PROMPT.geminiFindRequest + '\n' + text],
       });
       return response.text || null;
     } catch (error) {
