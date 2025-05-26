@@ -3,6 +3,8 @@ import * as path from 'path';
 import { Config } from '../config/config';
 import { Tender } from '../models/Tender';
 import { GeminiService } from './GeminiService';
+import { TenderResponse } from './ClaudeService';
+import { GoogleSearchService } from './googleSearchService';
 
 interface AnalyzedFile {
   analyzedFile: string;
@@ -12,6 +14,8 @@ interface AnalyzedFile {
 export class TenderAnalyticsService {
   private geminiService: GeminiService;
   private readonly outputDir = 'analysis_results';
+
+  googleSearch = new GoogleSearchService();
 
   constructor(config: Config) {
     this.geminiService = new GeminiService(config);
@@ -98,10 +102,64 @@ export class TenderAnalyticsService {
           },
         },
         { new: true },
-        
       );
     } catch (err) {
       console.error('Error in TenderAnalyticsService:', err);
     }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public async analyzeItems(regNumber: string, tender: TenderResponse) {
+    //     const items = tender.items;
+    //     for (const item of items) {
+    //       const { name, specifications } = item;
+    //       const specificationsText = Object.entries(specifications);
+    //       const specificationsTextString = specificationsText
+    //         .map(([key, value]) => `\n${key}: ${value}`)
+    //         .join(', ');
+    //       const itemText = `
+    // Наименование товара: ${name}
+    // Технические характеристики товара: ${specificationsTextString}
+    // `;
+
+    //       const itemResponse = await this.geminiService.generateFindRequest(itemText);
+    //       if (itemResponse) {
+    //         await Tender.findOneAndUpdate(
+    //           { regNumber },
+    //           { $push: { findRequests: { itemName: name, findRequest: itemResponse?.split('\n') } } },
+    //         );
+    //       }
+    //     }
+    const tenderAfterUpdate = await Tender.findOne({ regNumber });
+    if (!tenderAfterUpdate) {
+      console.error('Tender not found');
+      return;
+    }
+
+    const requests = tenderAfterUpdate.findRequests;
+
+    requests.forEach((req, i) => {
+      const { findRequest } = req;
+
+      findRequest.forEach(async (findRequestName) => {
+        const results = await this.googleSearch.search(findRequestName);
+
+        await Tender.findOneAndUpdate(
+          { regNumber },
+          {
+            $push: {
+              [`findRequests.${i}.parsedRequest`]: {
+                requestName: findRequestName,
+                responseFromWebsites: results,
+              },
+            },
+          },
+          { new: true },
+        );
+        console.log('Updated', findRequestName);
+      });
+    });
+
+    console.log('Everything is done');
   }
 }
