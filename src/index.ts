@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import dotenv from 'dotenv';
 import express from 'express';
 import cron from 'node-cron';
@@ -27,19 +28,22 @@ botService.start();
 
 const getAnalyticsForTenders = async () => {
   try {
-    await tenderlandService.getTenders();
+    // await tenderlandService.getTenders();
 
-    await Tender.find({ isProcessed: false })
+    await Tender.findOne({ regNumber: '32514850391' })
       .cursor()
       .eachAsync(async (tender) => {
-        const files = await tenderlandService.downloadZipFileAndUnpack(
-          tender.regNumber,
-          tender.tender.files,
-        );
-        
-        await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
+        // const files = await tenderlandService.downloadZipFileAndUnpack(
+        //   tender.regNumber,
+        //   tender.tender.files,
+        // );
+        // await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
+        // await tenderlandService.cleanupExtractedFiles(files);
+        // 3 STEP: Analyze each Item with Gemini Pro and generate prompts
 
-        await tenderlandService.cleanupExtractedFiles(files);
+        if (tender && tender.claudeResponse) {
+          await tenderAnalyticsService.analyzeItems(tender.regNumber, tender.claudeResponse);
+        }
       });
 
     // await tenderAnalyticsService.analyzeAllTenders(TENDERS);
