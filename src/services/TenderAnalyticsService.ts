@@ -4,7 +4,7 @@ import { Config } from '../config/config';
 import { Tender } from '../models/Tender';
 import { GeminiService } from './GeminiService';
 import { TenderResponse } from './ClaudeService';
-import { GoogleSearchService } from './GoogleSearchService';
+import { GoogleSearchService } from './googleSearchService';
 
 interface AnalyzedFile {
   analyzedFile: string;

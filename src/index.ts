@@ -58,6 +58,10 @@ cron.schedule(config.cronSchedule, async () => {
   // console.log('Cron job started');
 });
 
+app.listen(ENV.PORT, () => {
+  console.log(`Server is running on port ${ENV.PORT} in ${config.environment} environment`);
+});
+
 app.get('/', (req, res) => {
   res.json({
     status: 'ok',
@@ -66,8 +70,12 @@ app.get('/', (req, res) => {
   });
 });
 
-app.listen(ENV.PORT, () => {
-  console.log(`Server is running on port ${ENV.PORT} in ${config.environment} environment`);
+app.get('/health', (req, res) => {
+  res.send('OK');
+});
+
+app.get('/api', (req, res) => {
+  res.send('API is running');
 });
 
 process.once('SIGINT', () => botService.stop('SIGINT'));
