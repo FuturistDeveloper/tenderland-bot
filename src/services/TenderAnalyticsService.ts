@@ -116,8 +116,8 @@ export class TenderAnalyticsService {
   }
 
   public async analyzeItems(regNumber: string, tender: TenderResponse) {
-    const items = tender.items.slice(1); // TODO: Remove this after testing
-    items.forEach(async (item, i) => {
+    const items = tender.items;
+    const promises = items.map(async (item, i) => {
       const { name, specifications } = item;
       const specificationsText = Object.entries(specifications);
       const specificationsTextString = specificationsText
@@ -152,12 +152,6 @@ export class TenderAnalyticsService {
           },
         },
       );
-
-      // const tender = await Tender.findOne({ regNumber });
-      // if (!tender) {
-      //   console.error('Find request not found for:', regNumber);
-      //   return;
-      // }
 
       findRequest.forEach(async (findRequest) => {
         console.log('Searching for:', findRequest);
@@ -234,5 +228,7 @@ export class TenderAnalyticsService {
         console.log('Updated', findRequest);
       });
     });
+    await Promise.all(promises);
+    console.log('Items analyzed');
   }
 }

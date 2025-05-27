@@ -15,29 +15,42 @@ import {
 } from '../schemas/tenderland.schema';
 import { handleApiError } from '../utils/error-handler';
 
-const textract = require('textract');
-const xlsx = require('xlsx');
+import textract from 'textract';
+import xlsx from 'xlsx';
+import https from 'https';
 
 // const claudeService = new ClaudeService(config);
-
-interface IFilePath {
-  regNumber: string;
-  paths: string[];
-}
 
 export class TenderlandService {
   private readonly baseUrl: string;
   private readonly apiKey: string;
   private readonly axiosInstance: AxiosInstance;
+  private readonly proxy: {
+    host: string;
+    port: number;
+    auth: {
+      username: string;
+      password: string;
+    };
+  };
   private readonly config: Config;
 
   constructor(config: Config) {
     this.config = config;
     this.baseUrl = 'https://tenderland.ru/api/v1';
     this.apiKey = ENV.TENDERLAND_API_KEY;
+    this.proxy = {
+      host: 'proxy.toolip.io',
+      port: 31113,
+      auth: { username: 'b0d5a533', password: '8nbf88iu8gym' },
+    };
 
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
+      proxy: this.proxy,
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false,
+      }),
     });
 
     this.axiosInstance.interceptors.request.use((config) => {
@@ -163,8 +176,15 @@ export class TenderlandService {
 
   async downloadZipFileAndUnpack(folderName: string, url: string): Promise<string[]> {
     try {
+      const agent = new https.Agent({
+        rejectUnauthorized: false,
+      });
       console.log(`Downloading zip file from URL: ${url}`);
-      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        proxy: this.proxy,
+        httpsAgent: agent,
+      });
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
 
       console.log(`Writing zip file to: ${zipFilePath}`);

@@ -28,34 +28,53 @@ botService.start();
 
 const getAnalyticsForTenders = async () => {
   try {
-    // await tenderlandService.getTenders();
-
+    // TODO: Remove this after testing
     await Tender.findOne({ regNumber: '32514850391' })
+      .select('regNumber tender.files claudeResponse')
       .cursor()
       .eachAsync(async (tender) => {
-        // const files = await tenderlandService.downloadZipFileAndUnpack(
-        //   tender.regNumber,
-        //   tender.tender.files,
-        // );
-        // await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
-        // await tenderlandService.cleanupExtractedFiles(files);
-        // 3 STEP: Analyze each Item with Gemini Pro and generate prompts
-
-        if (tender && tender.claudeResponse) {
-          await tenderAnalyticsService.analyzeItems(tender.regNumber, tender.claudeResponse);
+        if (!tender) {
+          console.error('[getAnalyticsForTenders] Tender with such regNumber not found');
+          return;
         }
-      });
 
-    // await tenderAnalyticsService.analyzeAllTenders(TENDERS);
+        // 1 STEP: Download and unpack files
+        const files = await tenderlandService.downloadZipFileAndUnpack(
+          tender.regNumber,
+          tender.tender.files,
+        );
+
+        // const files = [
+        //   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/Извещение о закупке № 32514850391.html',
+        //   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/ЗК_МСП_бинокли и комплектующие_Ростовский ЦООТЭК.pdf',
+        // ];
+
+        // 2 STEP: Analyze tender with Gemini Pro
+        const claudeResponse = await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
+
+        // 3 STEP: Remove unpacked files
+        // await tenderlandService.cleanupExtractedFiles(files);
+
+        if (!claudeResponse) {
+          console.error('[getAnalyticsForTenders] Claude Response is null');
+          return;
+        }
+
+        // 4 STEP: Analyze each Item with Gemini Pro and generate prompts
+        // TODO: Change to claudeResponse from line 52 instead of tender.claudeResponse
+        // if (tender.claudeResponse) {
+        await tenderAnalyticsService.analyzeItems(tender.regNumber, claudeResponse);
+        // }
+      });
   } catch (err) {
     console.error('Error in analytics job:', err);
   }
 };
 
-getAnalyticsForTenders();
+// getAnalyticsForTenders();
 
 cron.schedule(config.cronSchedule, async () => {
-  // console.log('Cron job started');
+  // await tenderlandService.getTenders();
 });
 
 app.listen(ENV.PORT, () => {

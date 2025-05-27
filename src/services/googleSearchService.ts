@@ -80,6 +80,12 @@ export class GoogleSearchService {
         },
       });
 
+      // Check if response data is empty
+      if (!response.data) {
+        console.log('Empty response from ' + url);
+        return null;
+      }
+
       // Create html directory if it doesn't exist
       const htmlDir = path.join(process.cwd(), 'html');
       if (!fs.existsSync(htmlDir)) {
@@ -129,7 +135,7 @@ export class GoogleSearchService {
   // 10 results per query
   async search(
     query: string,
-    numResults: number = 10,
+    numResults: number = 3,
     // fetchContent: boolean = true,
   ): Promise<GoogleSearchResult[]> {
     try {

@@ -36,7 +36,7 @@ export interface ITender extends Document {
     findRequest: string[];
     parsedRequest: {
       requestName: string;
-      responseFromWebsites: {
+      responseFromWebsites?: {
         title: string;
         snippet: string;
         link: string;
