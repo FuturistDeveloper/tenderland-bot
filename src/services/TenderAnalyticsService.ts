@@ -3,8 +3,8 @@ import * as path from 'path';
 import { Config } from '../config/config';
 import { Tender } from '../models/Tender';
 import { GeminiService } from './GeminiService';
-import { TenderResponse } from './ClaudeService';
 import { GoogleSearchService } from './googleSearchService';
+import { TenderResponse } from './ClaudeService';
 
 interface AnalyzedFile {
   analyzedFile: string;
@@ -54,7 +54,10 @@ export class TenderAnalyticsService {
     return fileName;
   }
 
-  public async analyzeTender(regNumber: string, pathFiles: string[]) {
+  public async analyzeTender(
+    regNumber: string,
+    pathFiles: string[],
+  ): Promise<TenderResponse | null> {
     try {
       const analyzedFiles: AnalyzedFile[] = [];
 
@@ -90,102 +93,146 @@ export class TenderAnalyticsService {
 
       if (!finalAnalysis) {
         console.error('No final analysis found for tender:', regNumber);
-        return;
+        return null;
       }
+
+      console.log('Tender Files Analysis Finished for:', regNumber);
 
       await Tender.findOneAndUpdate(
         { regNumber },
         {
           $set: {
             claudeResponse: finalAnalysis,
-            isProcessed: true,
           },
         },
         { new: true },
       );
+
+      return finalAnalysis;
     } catch (err) {
-      console.error('Error in TenderAnalyticsService:', err);
+      console.error('Error in [analyzeTender]:', err);
+      return null;
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async analyzeItems(regNumber: string, tender: TenderResponse) {
-    //     const items = tender.items;
-    //     for (const item of items) {
-    //       const { name, specifications } = item;
-    //       const specificationsText = Object.entries(specifications);
-    //       const specificationsTextString = specificationsText
-    //         .map(([key, value]) => `\n${key}: ${value}`)
-    //         .join(', ');
-    //       const itemText = `
-    // Наименование товара: ${name}
-    // Технические характеристики товара: ${specificationsTextString}
-    // `;
-    //       const itemResponse = await this.geminiService.generateFindRequest(itemText);
-    //       if (itemResponse) {
-    //         await Tender.findOneAndUpdate(
-    //           { regNumber },
-    //           { $push: { findRequests: { itemName: name, findRequest: itemResponse?.split('\n') } } },
-    //         );
-    //       }
-    //     }
-    // const tenderAfterUpdate = await Tender.findOne({ regNumber });
-    // if (!tenderAfterUpdate) {
-    //   console.error('Tender not found');
-    //   return;
-    // }
-    // const requests = tenderAfterUpdate.findRequests;
-    // requests.forEach((req, i) => {
-    //   const { findRequest } = req;
-    //   findRequest.forEach(async (findRequestName) => {
-    //     const results = await this.googleSearch.search(findRequestName);
-    //     await Tender.findOneAndUpdate(
-    //       { regNumber },
-    //       {
-    //         $push: {
-    //           [`findRequests.${i}.parsedRequest`]: {
-    //             requestName: findRequestName,
-    //             responseFromWebsites: results,
-    //           },
-    //         },
-    //       },
-    //       { new: true },
-    //     );
-    //     console.log('Updated', findRequestName);
-    //   });
-    // });
+    const items = tender.items.slice(1); // TODO: Remove this after testing
+    items.forEach(async (item, i) => {
+      const { name, specifications } = item;
+      const specificationsText = Object.entries(specifications);
+      const specificationsTextString = specificationsText
+        .map(([key, value]) => `\n${key}: ${value}`)
+        .join(', ');
+      const itemText = `
+      Наименование товара: ${name}
+      Технические характеристики товара: ${specificationsTextString}
+      `;
 
-    const outputPath = 'binokl-levenhuk-vegas-ed.html';
+      console.log('Analyzing item:', name);
+      const itemResponse = await this.geminiService.generateFindRequest(itemText);
 
-    const path = await this.googleSearch.downloadHtml(
-      'https://optizona.by/binokli/binokl-levenhuk-vegas-ed-12x50.html',
-      outputPath,
-    );
+      if (!itemResponse) {
+        console.error('No item response found for:', name);
+        return;
+      }
 
-    if (!path) {
-      console.error('Failed to download HTML');
-      return;
-    }
+      console.log('Item Responded', name);
 
-    const response = await this.geminiService.generateResponse(
-      path,
-      'Проанализируй и забери всю актуальную информацию по товару и характеристики с контента который я предоставлю',
-    );
+      const findRequest = itemResponse?.split('\n'); // 3
+      console.log('Find request:', findRequest);
 
-    console.log(response);
+      await Tender.findOneAndUpdate(
+        { regNumber },
+        {
+          $push: {
+            findRequests: {
+              itemName: name,
+              findRequest,
+            },
+          },
+        },
+      );
 
-    // Delete downloaded file after analysis
-    try {
-      fs.unlinkSync(path);
-      console.log('Successfully deleted downloaded file:', path);
-    } catch (error) {
-      console.error('Error deleting file:', error);
-    }
+      // const tender = await Tender.findOne({ regNumber });
+      // if (!tender) {
+      //   console.error('Find request not found for:', regNumber);
+      //   return;
+      // }
 
-    // const response = await this.geminiService.getActualContentFromTheWebsite(
-    //   'Проанализируй и забери всю актуальную информацию и характеристики с контента который я предоставлю для товара Штатив Falcon Eyes Travel Line VT2:' +
-    //     content,
-    // );
-    // console.log('Content', response);
+      findRequest.forEach(async (findRequest) => {
+        console.log('Searching for:', findRequest);
+        const results = await this.googleSearch.search(findRequest); // 3 или 10 сайтов
+        console.log(`Searching finished for: ${findRequest}`);
+
+        const promises = results.map(async (result) => {
+          const { link } = result;
+          const randomUID = crypto.randomUUID();
+          const outputPath = `${randomUID}.html`;
+
+          console.log('Downloading HTML for:', link);
+          const path = await this.googleSearch.downloadHtml(link, outputPath);
+
+          if (!path) {
+            console.error('HTML was not downloaded for:', link);
+            return {
+              link,
+              title: result.title,
+              snippet: result.snippet,
+              content: null,
+            };
+          }
+
+          console.log('HTML downloaded for:', link);
+
+          const response = await this.geminiService.generateResponse(
+            path,
+            'Проанализируй и забери всю актуальную информацию по товару и характеристики с контента который я предоставлю',
+          );
+
+          // // Delete downloaded file after analysis
+          try {
+            fs.unlinkSync(path);
+            console.log('Successfully deleted downloaded file:', path);
+          } catch (error) {
+            console.error('Error deleting file:', error);
+          }
+
+          if (!response) {
+            console.error('Failed to generate response to analyze the content from HTML');
+            return {
+              link,
+              title: result.title,
+              snippet: result.snippet,
+              content: null,
+            };
+          }
+          console.log('Analyzing HTML finished for:', link);
+
+          return {
+            link,
+            title: result.title,
+            snippet: result.snippet,
+            content: response,
+          };
+        });
+
+        const responses = await Promise.all(promises);
+        console.log('Responses:', responses);
+
+        await Tender.findOneAndUpdate(
+          { regNumber },
+          {
+            $push: {
+              [`findRequests.${i}.parsedRequest`]: {
+                requestName: findRequest,
+                responseFromWebsites: responses,
+              },
+            },
+          },
+        );
+
+        console.log('Updated', findRequest);
+      });
+    });
   }
 }
