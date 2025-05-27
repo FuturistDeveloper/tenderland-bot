@@ -44,6 +44,11 @@ const getAnalyticsForTenders = async () => {
           tender.tender.files,
         );
 
+        if (!files) {
+          console.error('[getAnalyticsForTenders] Files are null');
+          return;
+        }
+
         // const files = [
         //   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/Извещение о закупке № 32514850391.html',
         //   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/ЗК_МСП_бинокли и комплектующие_Ростовский ЦООТЭК.pdf',
@@ -71,7 +76,7 @@ const getAnalyticsForTenders = async () => {
   }
 };
 
-// getAnalyticsForTenders();
+getAnalyticsForTenders();
 
 cron.schedule(config.cronSchedule, async () => {
   // await tenderlandService.getTenders();
