@@ -26,61 +26,58 @@ connectDB();
 
 botService.start();
 
-const getAnalyticsForTenders = async () => {
+export const getAnalyticsForTenders = async (
+  regNumber: string = '32514850391',
+): Promise<string> => {
   try {
+    // 0 STEP: Найти тендер в базе данных
+    const tender = await Tender.findOne({ regNumber }).select(
+      'regNumber tender.files claudeResponse',
+    );
+
+    if (!tender) {
+      console.error('[getAnalyticsForTenders] Тендер с таким номером не найден');
+      return 'Тендер с таким номером не найден';
+    }
+
+    // 1 STEP: Скачать и распаковать файлы
+    const files = await tenderlandService.downloadZipFileAndUnpack(
+      tender.regNumber,
+      tender.tender.files,
+    );
+
+    if (!files) {
+      console.error('[getAnalyticsForTenders] Не удалось скачать или распаковать файлы');
+      return 'Не удалось скачать или распаковать файлы';
+    }
+
     // TODO: Remove this after testing
-    await Tender.findOne({ regNumber: '32514850391' })
-      .select('regNumber tender.files claudeResponse')
-      .cursor()
-      .eachAsync(async (tender) => {
-        if (!tender) {
-          console.error('[getAnalyticsForTenders] Tender with such regNumber not found');
-          return;
-        }
+    // const files = [
+    //   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/Извещение о закупке № 32514850391.html',
+    //   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/ЗК_МСП_бинокли и комплектующие_Ростовский ЦООТЭК.pdf',
+    // ];
 
-        // 1 STEP: Download and unpack files
-        const files = await tenderlandService.downloadZipFileAndUnpack(
-          tender.regNumber,
-          tender.tender.files,
-        );
+    // 2 STEP: Анализ тендера с помощью Gemini Pro
+    const claudeResponse = await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
 
-        if (!files) {
-          console.error('[getAnalyticsForTenders] Files are null');
-          return;
-        }
+    // 3 STEP: Удалить распакованные файлы
+    await tenderlandService.cleanupExtractedFiles(files);
 
-        // const files = [
-        //   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/Извещение о закупке № 32514850391.html',
-        //   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/ЗК_МСП_бинокли и комплектующие_Ростовский ЦООТЭК.pdf',
-        // ];
+    if (!claudeResponse) {
+      console.error('[getAnalyticsForTenders] Не удалось получить ответ Gemini');
+      return 'Не удалось получить ответ от ИИ';
+    }
 
-        // 2 STEP: Analyze tender with Gemini Pro
-        const claudeResponse = await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
+    await tenderAnalyticsService.analyzeItems(tender.regNumber, claudeResponse);
 
-        // 3 STEP: Remove unpacked files
-        // await tenderlandService.cleanupExtractedFiles(files);
-
-        if (!claudeResponse) {
-          console.error('[getAnalyticsForTenders] Claude Response is null');
-          return;
-        }
-
-        // 4 STEP: Analyze each Item with Gemini Pro and generate prompts
-        // TODO: Change to claudeResponse from line 52 instead of tender.claudeResponse
-        // if (tender.claudeResponse) {
-        await tenderAnalyticsService.analyzeItems(tender.regNumber, claudeResponse);
-        // }
-      });
+    return 'Анализ тендера завершен успешно';
   } catch (err) {
     console.error('Error in analytics job:', err);
+    return `Произошла ошибка при анализе тендера: ${regNumber}`;
   }
 };
 
-// getAnalyticsForTenders();
-
-cron.schedule(config.cronSchedule, async () => {
-  // await tenderlandService.getTenders();
-});
+cron.schedule(config.cronSchedule, async () => {});
 
 app.listen(ENV.PORT, () => {
   console.log(`Server is running on port ${ENV.PORT} in ${config.environment} environment`);
