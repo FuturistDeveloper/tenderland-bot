@@ -9,7 +9,7 @@ export class BotService {
     this.bot = new Telegraf(ENV.BOT_TOKEN);
     this.setupMiddleware();
     this.setupCommands();
-    this.setupErrorHandling();
+    // this.setupErrorHandling();
   }
 
   private setupMiddleware(): void {
@@ -45,19 +45,23 @@ export class BotService {
 
     this.bot.command('tender', async (ctx) => {
       const regNumber = ctx.message.text.split(' ')[1];
-      ctx.reply('Тендер успешно найден! Начинаем анализ...');
 
-      const result = await getAnalyticsForTenders(regNumber);
+      if (Number.isNaN(Number(regNumber))) {
+        ctx.reply('Пожалуйста, введите номер тендера в формате: /tender 32514850391');
+        return;
+      }
+
+      const result = await getAnalyticsForTenders(regNumber, ctx);
       ctx.reply(result);
     });
   }
 
-  private setupErrorHandling(): void {
-    this.bot.catch((err, ctx) => {
-      console.error(`Error for ${ctx.updateType}:`, err);
-      ctx.reply('An error occurred while processing your request.');
-    });
-  }
+  // private setupErrorHandling(): void {
+  //   this.bot.catch((err, ctx) => {
+  //     console.error(`Error for ${ctx.updateType}:`, err);
+  //     ctx.reply('An error occurred while processing your request.');
+  //   });
+  // }
 
   public async start(): Promise<void> {
     try {
