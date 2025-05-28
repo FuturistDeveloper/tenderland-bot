@@ -538,14 +538,27 @@ ${tender.tender.customers.map((customer) => `• ${customer.lotCustomerShortName
 📦 ТОВАРЫ И УСЛОВИЯ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${tender.claudeResponse?.items
-  .map((item, index) => {
-    const specification = Object.entries(item.specifications)
-      .map(([key, value]) => `  • ${key}: ${value}`)
-      .join('\n');
+  .map(
+    (
+      item: {
+        name: string;
+        quantity: {
+          value: string;
+          unit: string;
+        };
+        specifications: Record<string, string>;
+        requirements: string[];
+        estimated_price: number | null;
+      },
+      index: number,
+    ) => {
+      const specification = Object.entries(item.specifications)
+        .map(([key, value]) => `  • ${key}: ${value}`)
+        .join('\n');
 
-    const requirements = item.requirements.map((req) => `  • ${req}`).join('\n');
+      const requirements = item.requirements.map((req) => `  • ${req}`).join('\n');
 
-    return `
+      return `
 Товар #${index + 1}: ${item.name}
 Количество: ${item.quantity.value} ${item.quantity.unit}
 ${item.estimated_price ? `Ориентировочная цена: ${formatPrice(item.estimated_price)} ₽` : ''}
@@ -556,7 +569,8 @@ ${specification}
 Требования:
 ${requirements}
 `;
-  })
+    },
+  )
   .join('\n')}
 
 🔍 РЕЗУЛЬТАТЫ ПОИСКА

@@ -54,21 +54,24 @@ export const getAnalyticsForTenders = async (
     ctx.reply('Тендер успешно найден! Начинаем анализ...');
 
     // 1 STEP: Скачать и распаковать файлы
-    const { files, parentFolder } = await tenderlandService.downloadZipFileAndUnpack(
+    const unpackedFiles = await tenderlandService.downloadZipFileAndUnpack(
       tender.regNumber,
       tender.files,
     );
 
-    if (!files) {
+    if (!unpackedFiles) {
       console.error('[getAnalyticsForTenders] Не удалось скачать или распаковать файлы');
       return 'Не удалось скачать или распаковать файлы';
     }
 
     // // 2 STEP: Анализ тендера с помощью Gemini Pro
-    const claudeResponse = await tenderAnalyticsService.analyzeTender(tender.regNumber, files);
+    const claudeResponse = await tenderAnalyticsService.analyzeTender(
+      tender.regNumber,
+      unpackedFiles.files,
+    );
 
     // // 3 STEP: Удалить распакованные файлы
-    await tenderlandService.cleanupExtractedFiles(parentFolder);
+    await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
 
     if (!claudeResponse) {
       console.error('[getAnalyticsForTenders] Не удалось получить ответ Gemini');
@@ -76,20 +79,24 @@ export const getAnalyticsForTenders = async (
     }
 
     // 4 STEP: Анализ товаров
-    await tenderAnalyticsService.analyzeItems(tender.regNumber, claudeResponse);
+    const isAnalyzed = await tenderAnalyticsService.analyzeItems(tender.regNumber, claudeResponse);
 
-    // 5 STEP: Генерация отчета
-    const finalReport = await tenderAnalyticsService.generateFinalReport(tender.regNumber);
+    if (isAnalyzed) {
+      // 5 STEP: Генерация отчета
+      const finalReport = await tenderAnalyticsService.generateFinalReport(tender.regNumber);
 
-    if (finalReport) {
-      const halfLength = Math.ceil(finalReport.length / 2);
-      await ctx.reply(finalReport.slice(0, halfLength));
-      await ctx.reply(finalReport.slice(halfLength));
+      if (finalReport) {
+        const halfLength = Math.ceil(finalReport.length / 2);
+        await ctx.reply(finalReport.slice(0, halfLength));
+        await ctx.reply(finalReport.slice(halfLength));
+      } else {
+        await ctx.reply('Не удалось получить ответ от ИИ');
+      }
+
+      return 'Анализ тендера завершен';
     } else {
-      await ctx.reply('Не удалось получить ответ от ИИ');
+      return 'Не удалось проанализировать товары';
     }
-
-    return finalReport;
   } catch (err) {
     console.error('Error in analytics job:', err);
     return `Произошла ошибка при анализе тендера: ${regNumber}`;

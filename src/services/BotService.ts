@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { ENV, getAnalyticsForTenders } from '../index';
 import { User } from '../models/User';
+import { measureExecutionTime } from '../utils/timing';
 
 export class BotService {
   private bot: Telegraf;
@@ -9,7 +10,7 @@ export class BotService {
     this.bot = new Telegraf(ENV.BOT_TOKEN);
     this.setupMiddleware();
     this.setupCommands();
-    // this.setupErrorHandling();
+    this.setupErrorHandling();
   }
 
   private setupMiddleware(): void {
@@ -51,17 +52,20 @@ export class BotService {
         return;
       }
 
-      const result = await getAnalyticsForTenders(regNumber, ctx);
+      const result = await measureExecutionTime(
+        () => getAnalyticsForTenders(regNumber, ctx),
+        `Analyzing tender ${regNumber}`,
+      );
       ctx.reply(result);
     });
   }
 
-  // private setupErrorHandling(): void {
-  //   this.bot.catch((err, ctx) => {
-  //     console.error(`Error for ${ctx.updateType}:`, err);
-  //     ctx.reply('An error occurred while processing your request.');
-  //   });
-  // }
+  private setupErrorHandling(): void {
+    this.bot.catch((err, ctx) => {
+      console.error(`Error for ${ctx.updateType}:`, err);
+      // ctx.reply('An error occurred while processing your request.');
+    });
+  }
 
   public async start(): Promise<void> {
     try {

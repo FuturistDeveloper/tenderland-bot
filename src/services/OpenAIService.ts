@@ -9,11 +9,6 @@ export class OpenAIService {
   constructor(config: Config) {
     this.config = config;
 
-    // Validate API key format
-    if (!ENV.OPENAI_API_KEY || !ENV.OPENAI_API_KEY.startsWith('sk-')) {
-      throw new Error('Invalid OpenAI API key format. API key should start with "sk-"');
-    }
-
     this.client = new OpenAI({
       apiKey: ENV.OPENAI_API_KEY,
     });
@@ -47,7 +42,7 @@ export class OpenAIService {
           stack: error.stack,
         });
       }
-      throw error;
+      return '[OpenAIService] Произошла ошибка при выполнении операции';
     }
   }
 }

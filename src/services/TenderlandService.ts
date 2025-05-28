@@ -48,7 +48,7 @@ export class TenderlandService {
 
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
-      // proxy: this.proxy,
+      proxy: this.proxy,
       httpsAgent: new https.Agent({
         rejectUnauthorized: false,
       }),
@@ -173,6 +173,7 @@ export class TenderlandService {
     exportViewId: number = 1,
   ): Promise<TenderType | null> {
     try {
+      console.log('Getting tender by reg number:', regNumber);
       const tender = await this.axiosInstance.get(
         `/Search/Get?keys=${regNumber}&exportViewId=${exportViewId}`,
       );
@@ -234,7 +235,7 @@ export class TenderlandService {
   async downloadZipFileAndUnpack(
     folderName: string,
     url: string,
-  ): Promise<{ files: string[]; parentFolder: string }> {
+  ): Promise<{ files: string[]; parentFolder: string } | null> {
     try {
       const agent = new https.Agent({
         rejectUnauthorized: false,
@@ -356,7 +357,17 @@ export class TenderlandService {
             const convertedFile = await this.convertWordToPdf(file);
 
             // Move the converted file to the converted directory
+            if (!convertedFile) {
+              console.error(`Failed to convert file ${file}`);
+              continue;
+            }
+
             const convertedFileName = path.basename(convertedFile);
+            if (!convertedFileName) {
+              console.error(`Failed to get converted file name for ${convertedFile}`);
+              continue;
+            }
+
             const finalPath = path.join(convertedPath, convertedFileName);
 
             // If the converted file is in a different location, move it
@@ -415,6 +426,10 @@ export class TenderlandService {
                 try {
                   console.log(`Processing extracted file: ${extractedFile}`);
                   const convertedFile = await this.convertWordToPdf(extractedFile);
+                  if (!convertedFile) {
+                    console.error(`Failed to convert extracted file ${extractedFile}`);
+                    continue;
+                  }
                   const finalPath = path.join(convertedPath, path.basename(convertedFile));
 
                   if (convertedFile !== finalPath) {
@@ -468,7 +483,7 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
@@ -480,7 +495,7 @@ export class TenderlandService {
     }
   }
 
-  async convertWordToPdf(filePath: string): Promise<string> {
+  async convertWordToPdf(filePath: string): Promise<string | null> {
     try {
       const fileExt = path.extname(filePath).toLowerCase();
       if (fileExt === '.docx') {
@@ -490,9 +505,10 @@ export class TenderlandService {
       } else if (fileExt === '.xlsx' || fileExt === '.xls') {
         return await this.convertExcelToCsv(filePath);
       } else {
-        throw new Error(
+        console.log(
           'File is not supported. Only .doc, .docx, .xls, and .xlsx files are supported.',
         );
+        return null;
       }
     } catch (error) {
       console.error('Error in convertWordToPdf:', error);
@@ -503,11 +519,11 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
-  private async convertDocToText(filePath: string): Promise<string> {
+  private async convertDocToText(filePath: string): Promise<string | null> {
     try {
       const txtPath = filePath.replace(/\.doc$/i, '.txt');
       console.log(`Converting ${filePath} to text: ${txtPath}`);
@@ -544,11 +560,11 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
-  private async convertDocxToPdf(filePath: string): Promise<string> {
+  private async convertDocxToPdf(filePath: string): Promise<string | null> {
     try {
       const pdfPath = filePath.replace(/\.docx$/i, '.pdf');
       console.log(`Converting ${filePath} to PDF: ${pdfPath}`);
@@ -606,11 +622,11 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
-  private async convertExcelToCsv(filePath: string): Promise<string> {
+  private async convertExcelToCsv(filePath: string): Promise<string | null> {
     try {
       console.log(`Converting Excel file to CSV: ${filePath}`);
 
@@ -654,7 +670,7 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 }

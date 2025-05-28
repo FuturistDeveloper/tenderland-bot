@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { TenderResponse } from '../services/ClaudeService';
+import { TenderResponse } from '../services/GeminiService';
 
 interface IAnalyzedFile {
   analyzedFile: string;
