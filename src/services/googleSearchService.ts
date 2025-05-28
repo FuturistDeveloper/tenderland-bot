@@ -98,37 +98,7 @@ export class GoogleSearchService {
     }
   }
 
-  //   url: string,
-  //   outputPath: string,
-  //   config: Config,
-  // ): Promise<string> {
-  //   try {
-  //     // First download the HTML
-  //     const htmlContent = await this.downloadHtml(url, outputPath);
-
-  //     if (!htmlContent) {
-  //       console.error('[GoogleSearchService] Failed to download HTML content');
-  //       return '[GoogleSearchService] Failed to download HTML content';
-  //     }
-
-  //     // Initialize Gemini service
-  //     const geminiService = new GeminiService(config);
-
-  //     // Analyze the downloaded file with Gemini
-  //     const analysis = await geminiService.generateResponse(outputPath);
-
-  //     return analysis;
-  //   } catch (error) {
-  //     console.error('Error in downloadAndAnalyzeWithGemini:', error);
-  //   }
-  // }
-
-  // 10 results per query
-  async search(
-    query: string,
-    numResults: number = 3,
-    // fetchContent: boolean = true,
-  ): Promise<GoogleSearchResult[]> {
+  async search(query: string, numResults: number = 3): Promise<GoogleSearchResult[]> {
     try {
       const response = await axios.get(this.baseUrl, {
         params: {
@@ -145,18 +115,6 @@ export class GoogleSearchService {
         link: item.link,
         snippet: item.snippet,
       }));
-
-      // if (fetchContent) {
-      //   // Fetch content for each result in parallel
-      //   const contentPromises = results.map(async (result: GoogleSearchResult) => {
-      //     const content = await this.fetchWebpageContent(result.link);
-      //     return { ...result, content };
-      //   });
-
-      //   return await Promise.all(contentPromises);
-      // }
-
-      console.log('Results', results);
 
       return results;
     } catch (error) {
