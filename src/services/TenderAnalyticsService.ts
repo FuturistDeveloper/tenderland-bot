@@ -5,6 +5,7 @@ import { GeminiService, TenderResponse } from './GeminiService';
 import { GoogleSearchService } from './googleSearchService';
 import { getFinalPrompt, PROMPT } from '../constants/prompt';
 import { OpenAIService } from './OpenAIService';
+import path from 'path';
 
 interface AnalyzedFile {
   analyzedFile: string;
@@ -183,12 +184,12 @@ export class TenderAnalyticsService {
             PROMPT.geminiAnalyzeHTML,
           );
 
-          try {
-            fs.unlinkSync(path);
-            console.log('Successfully deleted downloaded file:', path);
-          } catch (error) {
-            console.error('Error deleting file:', error);
-          }
+          // try {
+          //   fs.unlinkSync(path);
+          //   console.log('Successfully deleted downloaded file:', path);
+          // } catch (error) {
+          //   console.error('Error deleting file:', error);
+          // }
 
           if (!response) {
             console.error('Failed to generate response to analyze the content from HTML');
@@ -229,6 +230,11 @@ export class TenderAnalyticsService {
     });
 
     const results = await Promise.all(itemPromises);
+
+    const htmlDir = path.join(process.cwd(), 'html');
+    fs.rmSync(htmlDir, { recursive: true, force: true });
+    console.log('Successfully deleted HTML directory');
+
     return results;
   }
 
