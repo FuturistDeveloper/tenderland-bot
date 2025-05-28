@@ -1,10 +1,11 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import { Config } from '../config/config';
 import { Tender } from '../models/Tender';
 import { GeminiService } from './GeminiService';
 import { GoogleSearchService } from './googleSearchService';
 import { TenderResponse } from './ClaudeService';
+import { getFinalPrompt, PROMPT } from '../constants/prompt';
+import { OpenAIService } from './OpenAIService';
 
 interface AnalyzedFile {
   analyzedFile: string;
@@ -13,46 +14,48 @@ interface AnalyzedFile {
 
 export class TenderAnalyticsService {
   private geminiService: GeminiService;
+  private openAIService: OpenAIService;
   private readonly outputDir = 'analysis_results';
 
   googleSearch = new GoogleSearchService();
 
   constructor(config: Config) {
     this.geminiService = new GeminiService(config);
+    this.openAIService = new OpenAIService(config);
     if (!fs.existsSync(this.outputDir)) {
       fs.mkdirSync(this.outputDir, { recursive: true });
     }
   }
 
-  private async saveAnalysisToFile(
-    tender: any,
-    analyzedFiles: AnalyzedFile[],
-    finalAnalysis: string,
-  ) {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = path.join(this.outputDir, `tender_${tender.regNumber}_${timestamp}.txt`);
+  // private async saveAnalysisToFile(
+  //   tender: any,
+  //   analyzedFiles: AnalyzedFile[],
+  //   finalAnalysis: string,
+  // ) {
+  //   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  //   const fileName = path.join(this.outputDir, `tender_${tender.regNumber}_${timestamp}.txt`);
 
-    let content = `Tender Analysis Report\n`;
-    content += `===================\n\n`;
-    content += `Tender Registration Number: ${tender.regNumber}\n`;
-    content += `Analysis Date: ${new Date().toISOString()}\n\n`;
-    content += `Individual File Analysis\n`;
-    content += `=====================\n\n`;
+  //   let content = `Tender Analysis Report\n`;
+  //   content += `===================\n\n`;
+  //   content += `Tender Registration Number: ${tender.regNumber}\n`;
+  //   content += `Analysis Date: ${new Date().toISOString()}\n\n`;
+  //   content += `Individual File Analysis\n`;
+  //   content += `=====================\n\n`;
 
-    for (const file of analyzedFiles) {
-      content += `File: ${file.analyzedFile}\n`;
-      content += `Analysis:\n${file.response}\n`;
-      content += `-------------------\n\n`;
-    }
+  //   for (const file of analyzedFiles) {
+  //     content += `File: ${file.analyzedFile}\n`;
+  //     content += `Analysis:\n${file.response}\n`;
+  //     content += `-------------------\n\n`;
+  //   }
 
-    content += `Final Analysis\n`;
-    content += `=============\n\n`;
-    content += finalAnalysis;
+  //   content += `Final Analysis\n`;
+  //   content += `=============\n\n`;
+  //   content += finalAnalysis;
 
-    await fs.promises.writeFile(fileName, content, 'utf8');
-    console.log(`Analysis saved to file: ${fileName}`);
-    return fileName;
-  }
+  //   await fs.promises.writeFile(fileName, content, 'utf8');
+  //   console.log(`Analysis saved to file: ${fileName}`);
+  //   return fileName;
+  // }
 
   public async analyzeTender(
     regNumber: string,
@@ -180,7 +183,7 @@ export class TenderAnalyticsService {
 
           const response = await this.geminiService.generateResponse(
             path,
-            'Проанализируй и забери всю актуальную информацию по товару и характеристики с контента который я предоставлю',
+            PROMPT.geminiAnalyzeHTML,
           );
 
           // // Delete downloaded file after analysis
@@ -230,5 +233,33 @@ export class TenderAnalyticsService {
     });
     await Promise.all(promises);
     console.log('Items analyzed');
+  }
+
+  public async generateFinalReport(regNumber: string = '32514850391testv3all') {
+    try {
+      const tender = await Tender.findOne({ regNumber });
+
+      if (!tender) {
+        console.error('[generateFinalReport] Тендер не найден');
+        return 'Тендер не найден в базе данных для генерации отчета';
+      }
+
+      const text = getFinalPrompt(tender);
+
+      console.log('Генерация финального отчета для тендера:', regNumber);
+      const answer = await this.openAIService.generateResponse(text);
+
+      if (!answer) {
+        console.error('[generateFinalReport] Не удалось получить ответ от ИИ');
+        return 'Не удалось получить ответ от ИИ';
+      }
+
+      await Tender.findOneAndUpdate({ regNumber }, { isProcessed: true, finalReport: answer });
+
+      return answer;
+    } catch (err) {
+      console.error('[generateFinalReport] Ошибка при генерации отчета:', err);
+      return 'Произошла ошибка при генерации отчета';
+    }
   }
 }
