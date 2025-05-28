@@ -491,7 +491,7 @@ export class TenderlandService {
     // Remove the directory and all contents recursively
     console.log('Removing directory:', parentFolder);
     if (fs.existsSync(parentFolder)) {
-      fs.rmdirSync(parentFolder, { recursive: true });
+      fs.rmSync(parentFolder, { recursive: true, force: true });
     }
   }
 
