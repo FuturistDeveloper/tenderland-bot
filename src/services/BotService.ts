@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import { ENV } from '../index';
+import { ENV, getAnalyticsForTenders } from '../index';
 import { User } from '../models/User';
 
 export class BotService {
@@ -32,11 +32,23 @@ export class BotService {
 
   private setupCommands(): void {
     this.bot.command('start', (ctx) => {
-      ctx.reply('Welcome to the bot! 👋');
+      ctx.reply(
+        'Здравствуйте! Напишите номер тендера, который хотите проанализировать в формате: /tender 32514850391',
+      );
     });
 
     this.bot.command('help', (ctx) => {
-      ctx.reply('Available commands:\n/start - Start the bot\n/help - Show this help message');
+      ctx.reply(
+        'Здравствуйте! Напишите номер тендера, который хотите проанализировать в формате: /tender 32514850391',
+      );
+    });
+
+    this.bot.command('tender', async (ctx) => {
+      const regNumber = ctx.message.text.split(' ')[1];
+      ctx.reply('Тендер успешно найден! Начинаем анализ...');
+
+      const result = await getAnalyticsForTenders(regNumber);
+      ctx.reply(result);
     });
   }
 
@@ -60,4 +72,4 @@ export class BotService {
   public async stop(signal: string): Promise<void> {
     await this.bot.stop(signal);
   }
-} 
+}
