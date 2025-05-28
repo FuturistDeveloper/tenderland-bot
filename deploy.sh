@@ -3,7 +3,7 @@
 # Configuration
 SERVER_HOST="38.180.171.139"
 SERVER_PASSWORD="rLC2pprqFo"
-SERVER_PATH="/root/tenderlandbot"
+SERVER_PATH="/root/tenderlandbotdev"
 LOCAL_DIST="./dist"
 LOCAL_ENV=".env"
 
@@ -45,7 +45,7 @@ if ! command -v pm2 &> /dev/null; then
 fi
 
 npm install --production
-pm2 start index.js --name tenderland-bot
+pm2 start index.js --name tenderland-bot-dev
 EOL
 
 chmod +x deploy_temp/start.sh
