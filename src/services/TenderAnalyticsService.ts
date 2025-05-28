@@ -119,120 +119,117 @@ export class TenderAnalyticsService {
   }
 
   public async analyzeItems(regNumber: string, tender: TenderResponse) {
-    const items = tender.items;
-    const promises = items.map(async (item, i) => {
-      const { name, specifications } = item;
-      const specificationsText = Object.entries(specifications);
-      const specificationsTextString = specificationsText
-        .map(([key, value]) => `\n${key}: ${value}`)
-        .join(', ');
-      const itemText = `
+    const res = await Promise.all(
+      tender.items.map(async (item, i) => {
+        const { name, specifications } = item;
+        const specificationsText = Object.entries(specifications);
+        const specificationsTextString = specificationsText
+          .map(([key, value]) => `\n${key}: ${value}`)
+          .join(', ');
+        const itemText = `
       Наименование товара: ${name}
       Технические характеристики товара: ${specificationsTextString}
       `;
 
-      console.log('Analyzing item:', name);
-      const itemResponse = await this.geminiService.generateFindRequest(itemText);
+        console.log('Analyzing item:', name);
+        const itemResponse = await this.geminiService.generateFindRequest(itemText);
 
-      if (!itemResponse) {
-        console.error('No item response found for:', name);
-        return;
-      }
+        if (!itemResponse) {
+          console.error('No item response found for:', name);
+          return;
+        }
 
-      console.log('Item Responded', name);
+        console.log('Item Responded', name);
 
-      const findRequest = itemResponse?.split('\n'); // 3
-      console.log('Find request:', findRequest);
-
-      await Tender.findOneAndUpdate(
-        { regNumber },
-        {
-          $push: {
-            findRequests: {
-              itemName: name,
-              findRequest,
-            },
-          },
-        },
-      );
-
-      findRequest.forEach(async (findRequest) => {
-        console.log('Searching for:', findRequest);
-        const results = await this.googleSearch.search(findRequest); // 3 или 10 сайтов
-        console.log(`Searching finished for: ${findRequest}`);
-
-        const promises = results.map(async (result) => {
-          const { link } = result;
-          const randomUID = crypto.randomUUID();
-          const outputPath = `${randomUID}.html`;
-
-          console.log('Downloading HTML for:', link);
-          const path = await this.googleSearch.downloadHtml(link, outputPath);
-
-          if (!path) {
-            console.error('HTML was not downloaded for:', link);
-            return {
-              link,
-              title: result.title,
-              snippet: result.snippet,
-              content: null,
-            };
-          }
-
-          console.log('HTML downloaded for:', link);
-
-          const response = await this.geminiService.generateResponse(
-            path,
-            PROMPT.geminiAnalyzeHTML,
-          );
-
-          // // Delete downloaded file after analysis
-          try {
-            fs.unlinkSync(path);
-            console.log('Successfully deleted downloaded file:', path);
-          } catch (error) {
-            console.error('Error deleting file:', error);
-          }
-
-          if (!response) {
-            console.error('Failed to generate response to analyze the content from HTML');
-            return {
-              link,
-              title: result.title,
-              snippet: result.snippet,
-              content: null,
-            };
-          }
-          console.log('Analyzing HTML finished for:', link);
-
-          return {
-            link,
-            title: result.title,
-            snippet: result.snippet,
-            content: response,
-          };
-        });
-
-        const responses = await Promise.all(promises);
-        console.log('Responses:', responses);
+        const findRequest = itemResponse?.split('\n'); // 3
+        console.log('Find request:', findRequest);
 
         await Tender.findOneAndUpdate(
           { regNumber },
           {
             $push: {
-              [`findRequests.${i}.parsedRequest`]: {
-                requestName: findRequest,
-                responseFromWebsites: responses,
+              findRequests: {
+                itemName: name,
+                findRequest,
               },
             },
           },
         );
 
-        console.log('Updated', findRequest);
-      });
-    });
-    await Promise.all(promises);
-    console.log('Items analyzed');
+        findRequest.forEach(async (findRequest) => {
+          console.log('Searching for:', findRequest);
+          const results = await this.googleSearch.search(findRequest); // 3 или 10 сайтов
+          console.log(`Searching finished for: ${findRequest}`);
+
+          const promises = results.map(async (result) => {
+            const { link } = result;
+            const randomUID = crypto.randomUUID();
+            const outputPath = `${randomUID}.html`;
+
+            console.log('Downloading HTML for:', link);
+            const path = await this.googleSearch.downloadHtml(link, outputPath);
+
+            if (!path) {
+              console.error('HTML was not downloaded for:', link);
+              return {
+                link,
+                title: result.title,
+                snippet: result.snippet,
+                content: null,
+              };
+            }
+
+            console.log('HTML downloaded for:', link);
+
+            const response = await this.geminiService.generateResponse(
+              path,
+              PROMPT.geminiAnalyzeHTML,
+            );
+
+            // // Delete downloaded file after analysis
+            try {
+              fs.unlinkSync(path);
+              console.log('Successfully deleted downloaded file:', path);
+            } catch (error) {
+              console.error('Error deleting file:', error);
+            }
+
+            if (!response) {
+              console.error('Failed to generate response to analyze the content from HTML');
+              return {
+                link,
+                title: result.title,
+                snippet: result.snippet,
+                content: null,
+              };
+            }
+            console.log('Analyzing HTML finished for:', link);
+
+            return {
+              link,
+              title: result.title,
+              snippet: result.snippet,
+              content: response,
+            };
+          });
+
+          const responses = await Promise.all(promises);
+          await Tender.findOneAndUpdate(
+            { regNumber },
+            {
+              $push: {
+                [`findRequests.${i}.parsedRequest`]: {
+                  requestName: findRequest,
+                  responseFromWebsites: responses,
+                },
+              },
+            },
+          );
+        });
+      }),
+    );
+
+    return res;
   }
 
   public async generateFinalReport(regNumber: string = '32514850391testv3all') {
