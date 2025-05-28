@@ -76,7 +76,7 @@ const getAnalyticsForTenders = async () => {
   }
 };
 
-getAnalyticsForTenders();
+// getAnalyticsForTenders();
 
 cron.schedule(config.cronSchedule, async () => {
   // await tenderlandService.getTenders();
