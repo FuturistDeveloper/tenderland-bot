@@ -119,6 +119,20 @@ export class GeminiService {
       return null;
     }
   }
+
+  public async generateFinalRequest(text: string): Promise<string | null> {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-pro-preview-05-06',
+        contents: [text],
+      });
+      console.log('Final request:', response?.text);
+      return response?.text || null;
+    } catch (error) {
+      console.error('Error generating final request:', error);
+      return null;
+    }
+  }
 }
 
 function parseResponse(text: string): TenderResponse {
