@@ -22,12 +22,6 @@ const botService = new BotService();
 
 connectDB();
 
-// TODO: Remove this after testing
-// const files = [
-//   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/Извещение о закупке № 32514850391.html',
-//   '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/ЗК_МСП_бинокли и комплектующие_Ростовский ЦООТЭК.pdf',
-// ];
-
 botService.start();
 
 export const getAnalyticsForTenders = async (
@@ -107,18 +101,12 @@ app.listen(ENV.PORT, () => {
   console.log(`Server is running on port ${ENV.PORT} in ${config.environment} environment`);
 });
 
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.json({
     status: 'ok',
     message: 'Bot is running',
     environment: config.environment,
   });
-});
-
-app.get('/test', async (req, res) => {
-  // TODO: Pass regNumber from request
-  const answer = await tenderAnalyticsService.generateFinalReport();
-  return res.send(answer);
 });
 
 process.once('SIGINT', () => botService.stop('SIGINT'));
