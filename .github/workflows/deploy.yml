@@ -23,6 +23,6 @@ jobs:
             source ~/.bashrc
             cd /home/tenderlandprod/tenderland-bot
             git pull
-            npm install
-            npm run build
-            pm2 restart all
+            /root/.nvm/versions/node/v22.15.0/bin/npm install
+            /root/.nvm/versions/node/v22.15.0/bin/npm run build
+            /root/.nvm/versions/node/v22.15.0/bin/pm2 restart all
