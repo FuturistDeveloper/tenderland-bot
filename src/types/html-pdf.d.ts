@@ -1,5 +1,6 @@
 declare module 'html-pdf' {
   interface PDFOptions {
+    phantomPath?: string;
     format?: string;
     border?: {
       top?: string;
