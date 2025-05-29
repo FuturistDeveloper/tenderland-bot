@@ -1,6 +1,7 @@
 import AdmZip from 'adm-zip';
 import axios, { AxiosInstance } from 'axios';
 import fs from 'fs';
+import htmlPdf from 'html-pdf';
 import mammoth from 'mammoth';
 import path from 'path';
 import { ENV } from '..';
@@ -14,7 +15,7 @@ import {
   TenderType,
 } from '../schemas/tenderland.schema';
 import { handleApiError } from '../utils/error-handler';
-import puppeteer from 'puppeteer';
+
 import textract from 'textract';
 import xlsx from 'xlsx';
 import https from 'https';
@@ -571,89 +572,121 @@ export class TenderlandService {
       // Read the DOCX file
       const buffer = await fs.promises.readFile(filePath);
 
+      //   <!DOCTYPE html>
+      //   <html>
+      //   <head>
+      //       <meta charset="utf-8">
+      //       <style>
+      //           body {
+      //               font-family: Arial, sans-serif;
+      //               margin: 20mm;
+      //               line-height: 1.5;
+      //           }
+      //           img {
+      //               max-width: 100%;
+      //               height: auto;
+      //           }
+      //           table {
+      //               border-collapse: collapse;
+      //               width: 100%;
+      //               margin: 1em 0;
+      //           }
+      //           td, th {
+      //               border: 1px solid #ddd;
+      //               padding: 8px;
+      //           }
+      //           tr:nth-child(even) {
+      //               background-color: #f2f2f2;
+      //           }
+      //       </style>
+      //   </head>
+      //   <body>
+      //       ${result.value}
+      //   </body>
+      //   </html>
+      // `;
+
+      // // Launch Puppeteer
+      // const browser = await puppeteer.launch({
+      //   headless: true,
+      //   args: [
+      //     '--no-sandbox',
+      //     '--disable-setuid-sandbox',
+      //     '--disable-dev-shm-usage',
+      //     '--disable-accelerated-2d-canvas',
+      //     '--disable-gpu',
+      //     '--no-first-run',
+      //     '--no-zygote',
+      //     '--single-process',
+      //   ],
+      //   executablePath: process.env.CHROME_BIN || undefined,
+      // });
+
+      // try {
+      //   const page = await browser.newPage();
+
+      //   // Set content and wait for network idle
+      //   await page.setContent(html, {
+      //     waitUntil: 'networkidle0',
+      //   });
+
+      //   // Generate PDF
+      //   await page.pdf({
+      //     path: pdfPath,
+      //     format: 'A4',
+      //     margin: {
+      //       top: '20mm',
+      //       right: '20mm',
+      //       bottom: '20mm',
+      //       left: '20mm',
+      //     },
+      //     printBackground: true,
+      //     displayHeaderFooter: true,
+      //     headerTemplate: '<div></div>',
+      //     footerTemplate:
+      //       '<div style="font-size: 10px; text-align: center; width: 100%;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+      //   });
+
       // Convert to HTML
       const result = await mammoth.convertToHtml({ buffer });
       const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                body { 
-                    font-family: Arial, sans-serif;
-                    margin: 20mm;
-                    line-height: 1.5;
-                }
-                img { 
-                    max-width: 100%;
-                    height: auto;
-                }
-                table {
-                    border-collapse: collapse;
-                    width: 100%;
-                    margin: 1em 0;
-                }
-                td, th {
-                    border: 1px solid #ddd;
-                    padding: 8px;
-                }
-                tr:nth-child(even) {
-                    background-color: #f2f2f2;
-                }
-            </style>
-        </head>
-        <body>
-            ${result.value}
-        </body>
-        </html>
-      `;
-
-      // Launch Puppeteer
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-        ],
-        executablePath: process.env.CHROME_BIN || undefined,
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body { font-family: Arial, sans-serif; }
+                        img { max-width: 100%; }
+                    </style>
+                </head>
+                <body>
+                    ${result.value}
+                </body>
+                </html>
+            `;
+      // Convert HTML to PDF
+      await new Promise<void>((resolve, reject) => {
+        htmlPdf
+          .create(html, {
+            format: 'A4',
+            border: {
+              top: '20mm',
+              right: '20mm',
+              bottom: '20mm',
+              left: '20mm',
+            },
+          })
+          .toFile(pdfPath, (err: Error | null) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
       });
 
-      try {
-        const page = await browser.newPage();
-
-        // Set content and wait for network idle
-        await page.setContent(html, {
-          waitUntil: 'networkidle0',
-        });
-
-        // Generate PDF
-        await page.pdf({
-          path: pdfPath,
-          format: 'A4',
-          margin: {
-            top: '20mm',
-            right: '20mm',
-            bottom: '20mm',
-            left: '20mm',
-          },
-          printBackground: true,
-          displayHeaderFooter: true,
-          headerTemplate: '<div></div>',
-          footerTemplate:
-            '<div style="font-size: 10px; text-align: center; width: 100%;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>',
-        });
-
-        console.log('Conversion completed successfully');
-        return pdfPath;
-      } finally {
-        await browser.close();
-      }
+      console.log('Conversion completed successfully');
+      return pdfPath;
     } catch (error) {
       console.error('Error in convertDocxToPdf:', error);
       if (error instanceof Error) {
