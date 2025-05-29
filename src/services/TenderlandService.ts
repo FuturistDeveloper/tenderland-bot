@@ -243,7 +243,7 @@ export class TenderlandService {
       console.log(`Downloading zip file from URL: ${url}`);
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
-        proxy: this.proxy,
+        // proxy: this.proxy,
         httpsAgent: agent,
       });
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
