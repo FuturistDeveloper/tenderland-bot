@@ -7,6 +7,7 @@ import { TenderAnalyticsService } from './services/TenderAnalyticsService';
 import { TenderlandService } from './services/TenderlandService';
 import { validateEnv } from './utils/env';
 import { Context } from 'telegraf';
+import { GeminiService } from './services/GeminiService';
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.json());
 
 const tenderlandService = new TenderlandService(config);
 const tenderAnalyticsService = new TenderAnalyticsService(config);
+const geminiService = new GeminiService(config);
 const botService = new BotService();
 
 connectDB();
@@ -107,6 +109,19 @@ app.get('/api', (req, res) => {
     message: 'Bot is running',
     environment: config.environment,
   });
+});
+
+app.get('/api/test', async (req, res) => {
+  try {
+    const response = await geminiService.generateFinalRequest('How is the weather in NY');
+    if (!response) {
+      return res.status(500).send('Не удалось получить ответ от ИИ');
+    }
+    return res.send(response);
+  } catch (error) {
+    console.error('Error in test job:', error);
+    return res.status(500).send('Произошла ошибка при тестировании');
+  }
 });
 
 process.once('SIGINT', () => botService.stop('SIGINT'));
