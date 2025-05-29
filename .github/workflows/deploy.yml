@@ -20,9 +20,11 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            source ~/.bashrc
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm use 22.15.0
             cd /home/tenderlandprod/tenderland-bot
             git pull
-            /root/.nvm/versions/node/v22.15.0/bin/npm install
-            /root/.nvm/versions/node/v22.15.0/bin/npm run build
-            /root/.nvm/versions/node/v22.15.0/bin/pm2 restart all
+            npm install
+            npm run build
+            pm2 restart all
