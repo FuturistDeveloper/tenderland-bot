@@ -32,6 +32,7 @@
     "mongoose": "^8.1.1",
     "node-cron": "^4.0.5",
     "openai": "^4.103.0",
+    "phantomjs-prebuilt": "^2.1.16",
     "puppeteer": "^24.9.0",
     "telegraf": "^4.15.3",
     "textract": "^2.5.0",

@@ -593,7 +593,6 @@ export class TenderlandService {
       await new Promise<void>((resolve, reject) => {
         htmlPdf
           .create(html, {
-            phantomPath: './node_modules/phantomjs-prebuilt/bin/phantomjs',
             format: 'A4',
             border: {
               top: '20mm',
