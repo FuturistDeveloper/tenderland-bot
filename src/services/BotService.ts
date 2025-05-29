@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
-import { ENV } from '../index';
+import { ENV, getAnalyticsForTenders } from '../index';
 import { User } from '../models/User';
+import { measureExecutionTime } from '../utils/timing';
 
 export class BotService {
   private bot: Telegraf;
@@ -32,18 +33,37 @@ export class BotService {
 
   private setupCommands(): void {
     this.bot.command('start', (ctx) => {
-      ctx.reply('Welcome to the bot! 👋');
+      ctx.reply(
+        'Здравствуйте! Напишите номер тендера, который хотите проанализировать в формате: /tender 32514850391',
+      );
     });
 
     this.bot.command('help', (ctx) => {
-      ctx.reply('Available commands:\n/start - Start the bot\n/help - Show this help message');
+      ctx.reply(
+        'Здравствуйте! Напишите номер тендера, который хотите проанализировать в формате: /tender 32514850391',
+      );
+    });
+
+    this.bot.command('tender', async (ctx) => {
+      const regNumber = ctx.message.text.split(' ')[1];
+
+      if (Number.isNaN(Number(regNumber))) {
+        ctx.reply('Пожалуйста, введите номер тендера в формате: /tender 32514850391');
+        return;
+      }
+
+      const result = await measureExecutionTime(
+        () => getAnalyticsForTenders(regNumber, ctx),
+        `Analyzing tender ${regNumber}`,
+      );
+      ctx.reply(result);
     });
   }
 
   private setupErrorHandling(): void {
     this.bot.catch((err, ctx) => {
       console.error(`Error for ${ctx.updateType}:`, err);
-      ctx.reply('An error occurred while processing your request.');
+      // ctx.reply('An error occurred while processing your request.');
     });
   }
 
@@ -60,4 +80,4 @@ export class BotService {
   public async stop(signal: string): Promise<void> {
     await this.bot.stop(signal);
   }
-} 
+}

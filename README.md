@@ -66,19 +66,3 @@ A Telegram bot built with Node.js, Express, Telegraf, TypeScript, and MongoDB.
   ```bash
   npm run lint:fix
   ```
-
-## Available Bot Commands
-
-- `/start` - Start the bot
-- `/help` - Show help message
-
-## Database
-
-The bot uses MongoDB to store user information. The following data is automatically saved for each user:
-
-- Telegram ID
-- Username
-- First Name
-- Last Name
-- Created At
-- Updated At
