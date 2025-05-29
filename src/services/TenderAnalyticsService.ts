@@ -1,10 +1,11 @@
 import * as fs from 'fs';
-import * as path from 'path';
 import { Config } from '../config/config';
 import { Tender } from '../models/Tender';
-import { GeminiService } from './GeminiService';
+import { GeminiService, TenderResponse } from './GeminiService';
 import { GoogleSearchService } from './googleSearchService';
-import { TenderResponse } from './ClaudeService';
+import { getFinalPrompt, PROMPT } from '../constants/prompt';
+import { OpenAIService } from './OpenAIService';
+import path from 'path';
 
 interface AnalyzedFile {
   analyzedFile: string;
@@ -13,46 +14,43 @@ interface AnalyzedFile {
 
 export class TenderAnalyticsService {
   private geminiService: GeminiService;
-  private readonly outputDir = 'analysis_results';
-
+  private openAIService: OpenAIService;
   googleSearch = new GoogleSearchService();
 
   constructor(config: Config) {
     this.geminiService = new GeminiService(config);
-    if (!fs.existsSync(this.outputDir)) {
-      fs.mkdirSync(this.outputDir, { recursive: true });
-    }
+    this.openAIService = new OpenAIService(config);
   }
 
-  private async saveAnalysisToFile(
-    tender: any,
-    analyzedFiles: AnalyzedFile[],
-    finalAnalysis: string,
-  ) {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = path.join(this.outputDir, `tender_${tender.regNumber}_${timestamp}.txt`);
+  // private async saveAnalysisToFile(
+  //   tender: any,
+  //   analyzedFiles: AnalyzedFile[],
+  //   finalAnalysis: string,
+  // ) {
+  //   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  //   const fileName = path.join(this.outputDir, `tender_${tender.regNumber}_${timestamp}.txt`);
 
-    let content = `Tender Analysis Report\n`;
-    content += `===================\n\n`;
-    content += `Tender Registration Number: ${tender.regNumber}\n`;
-    content += `Analysis Date: ${new Date().toISOString()}\n\n`;
-    content += `Individual File Analysis\n`;
-    content += `=====================\n\n`;
+  //   let content = `Tender Analysis Report\n`;
+  //   content += `===================\n\n`;
+  //   content += `Tender Registration Number: ${tender.regNumber}\n`;
+  //   content += `Analysis Date: ${new Date().toISOString()}\n\n`;
+  //   content += `Individual File Analysis\n`;
+  //   content += `=====================\n\n`;
 
-    for (const file of analyzedFiles) {
-      content += `File: ${file.analyzedFile}\n`;
-      content += `Analysis:\n${file.response}\n`;
-      content += `-------------------\n\n`;
-    }
+  //   for (const file of analyzedFiles) {
+  //     content += `File: ${file.analyzedFile}\n`;
+  //     content += `Analysis:\n${file.response}\n`;
+  //     content += `-------------------\n\n`;
+  //   }
 
-    content += `Final Analysis\n`;
-    content += `=============\n\n`;
-    content += finalAnalysis;
+  //   content += `Final Analysis\n`;
+  //   content += `=============\n\n`;
+  //   content += finalAnalysis;
 
-    await fs.promises.writeFile(fileName, content, 'utf8');
-    console.log(`Analysis saved to file: ${fileName}`);
-    return fileName;
-  }
+  //   await fs.promises.writeFile(fileName, content, 'utf8');
+  //   console.log(`Analysis saved to file: ${fileName}`);
+  //   return fileName;
+  // }
 
   public async analyzeTender(
     regNumber: string,
@@ -64,6 +62,10 @@ export class TenderAnalyticsService {
       for (const pathFile of pathFiles) {
         console.log('Processing file:', pathFile);
         const response = await this.geminiService.generateResponse(pathFile);
+        if (!response) {
+          console.error('No response found for file:', pathFile);
+          return null;
+        }
         analyzedFiles.push({
           analyzedFile: pathFile,
           response,
@@ -116,8 +118,7 @@ export class TenderAnalyticsService {
   }
 
   public async analyzeItems(regNumber: string, tender: TenderResponse) {
-    const items = tender.items;
-    const promises = items.map(async (item, i) => {
+    const itemPromises = tender.items.map(async (item, i: number) => {
       const { name, specifications } = item;
       const specificationsText = Object.entries(specifications);
       const specificationsTextString = specificationsText
@@ -138,7 +139,7 @@ export class TenderAnalyticsService {
 
       console.log('Item Responded', name);
 
-      const findRequest = itemResponse?.split('\n'); // 3
+      const findRequest = itemResponse?.split('\n');
       console.log('Find request:', findRequest);
 
       await Tender.findOneAndUpdate(
@@ -153,12 +154,12 @@ export class TenderAnalyticsService {
         },
       );
 
-      findRequest.forEach(async (findRequest) => {
-        console.log('Searching for:', findRequest);
-        const results = await this.googleSearch.search(findRequest); // 3 или 10 сайтов
-        console.log(`Searching finished for: ${findRequest}`);
+      const searchPromises = findRequest.map(async (request) => {
+        console.log('Searching for:', request);
+        const results = await this.googleSearch.search(request);
+        console.log(`Searching finished for: ${request}`);
 
-        const promises = results.map(async (result) => {
+        const websitePromises = results.map(async (result) => {
           const { link } = result;
           const randomUID = crypto.randomUUID();
           const outputPath = `${randomUID}.html`;
@@ -180,16 +181,15 @@ export class TenderAnalyticsService {
 
           const response = await this.geminiService.generateResponse(
             path,
-            'Проанализируй и забери всю актуальную информацию по товару и характеристики с контента который я предоставлю',
+            PROMPT.geminiAnalyzeHTML,
           );
 
-          // // Delete downloaded file after analysis
-          try {
-            fs.unlinkSync(path);
-            console.log('Successfully deleted downloaded file:', path);
-          } catch (error) {
-            console.error('Error deleting file:', error);
-          }
+          // try {
+          //   fs.unlinkSync(path);
+          //   console.log('Successfully deleted downloaded file:', path);
+          // } catch (error) {
+          //   console.error('Error deleting file:', error);
+          // }
 
           if (!response) {
             console.error('Failed to generate response to analyze the content from HTML');
@@ -210,25 +210,59 @@ export class TenderAnalyticsService {
           };
         });
 
-        const responses = await Promise.all(promises);
-        console.log('Responses:', responses);
-
+        const responses = await Promise.all(websitePromises);
         await Tender.findOneAndUpdate(
           { regNumber },
           {
             $push: {
               [`findRequests.${i}.parsedRequest`]: {
-                requestName: findRequest,
+                requestName: request,
                 responseFromWebsites: responses,
               },
             },
           },
         );
 
-        console.log('Updated', findRequest);
+        return responses;
       });
+
+      await Promise.all(searchPromises);
     });
-    await Promise.all(promises);
-    console.log('Items analyzed');
+
+    const results = await Promise.all(itemPromises);
+
+    const htmlDir = path.join(process.cwd(), 'html');
+    fs.rmSync(htmlDir, { recursive: true, force: true });
+    console.log('Successfully deleted HTML directory');
+
+    return results;
+  }
+
+  public async generateFinalReport(regNumber: string = '32514850391testv3all') {
+    try {
+      const tender = await Tender.findOne({ regNumber });
+
+      if (!tender) {
+        console.error('[generateFinalReport] Тендер не найден');
+        return 'Тендер не найден в базе данных для генерации отчета';
+      }
+
+      const text = getFinalPrompt(tender);
+
+      console.log('Генерация финального отчета для тендера:', regNumber);
+      const answer = await this.openAIService.generateResponse(text);
+
+      if (!answer) {
+        console.error('[generateFinalReport] Не удалось получить ответ от ИИ');
+        return 'Не удалось получить ответ от ИИ';
+      }
+
+      await Tender.findOneAndUpdate({ regNumber }, { isProcessed: true, finalReport: answer });
+
+      return answer;
+    } catch (err) {
+      console.error('[generateFinalReport] Ошибка при генерации отчета:', err);
+      return 'Произошла ошибка при генерации отчета';
+    }
   }
 }

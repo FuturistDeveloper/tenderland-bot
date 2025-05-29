@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { ENV, getAnalyticsForTenders } from '../index';
 import { User } from '../models/User';
+import { measureExecutionTime } from '../utils/timing';
 
 export class BotService {
   private bot: Telegraf;
@@ -45,9 +46,16 @@ export class BotService {
 
     this.bot.command('tender', async (ctx) => {
       const regNumber = ctx.message.text.split(' ')[1];
-      ctx.reply('Тендер успешно найден! Начинаем анализ...');
 
-      const result = await getAnalyticsForTenders(regNumber);
+      if (Number.isNaN(Number(regNumber))) {
+        ctx.reply('Пожалуйста, введите номер тендера в формате: /tender 32514850391');
+        return;
+      }
+
+      const result = await measureExecutionTime(
+        () => getAnalyticsForTenders(regNumber, ctx),
+        `Analyzing tender ${regNumber}`,
+      );
       ctx.reply(result);
     });
   }
@@ -55,7 +63,7 @@ export class BotService {
   private setupErrorHandling(): void {
     this.bot.catch((err, ctx) => {
       console.error(`Error for ${ctx.updateType}:`, err);
-      ctx.reply('An error occurred while processing your request.');
+      // ctx.reply('An error occurred while processing your request.');
     });
   }
 

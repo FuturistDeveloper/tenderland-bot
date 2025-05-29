@@ -3,7 +3,60 @@ import path from 'path';
 import { Config } from '../config/config';
 import { PROMPT } from '../constants/prompt';
 import { ENV } from '../index';
-import { TenderResponse } from './ClaudeService';
+
+export interface TenderResponse {
+  tender: {
+    name: string;
+    number: string;
+    type: string;
+    price: string;
+    currency: string;
+    application_deadline: string;
+    auction_date: string;
+  };
+  customer: {
+    name: string;
+    inn: string;
+    ogrn: string;
+    address: string;
+    contacts: string;
+  };
+  delivery_terms: {
+    delivery_period: {
+      type: string;
+      value: string;
+    };
+    delivery_location: string;
+    payment_terms: {
+      prepayment_percent: number;
+      payment_days: number;
+    };
+    application_security: {
+      amount: number | null;
+      percent: number | null;
+    };
+    contract_security: {
+      amount: number | null;
+      percent: number | null;
+    };
+  };
+  items: Array<{
+    name: string;
+    quantity: {
+      value: string;
+      unit: string;
+    };
+    specifications: Record<string, string>;
+    requirements: string[];
+    estimated_price: number | null;
+  }>;
+  special_conditions: {
+    requirements_for_participants: string[];
+    penalties: string[];
+    other_conditions: string[];
+  };
+}
+
 export class GeminiService {
   private readonly config: Config;
   private readonly ai: GoogleGenAI;
@@ -11,15 +64,13 @@ export class GeminiService {
   constructor(config: Config) {
     this.config = config;
 
-    // Validate API key format
-    if (!ENV.GEMINI_API_KEY) {
-      throw new Error('Invalid Gemini API key format. API key is required');
-    }
-
     this.ai = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
   }
 
-  public async generateResponse(filePath: string, prompt: string = PROMPT.gemini): Promise<string> {
+  public async generateResponse(
+    filePath: string,
+    prompt: string = PROMPT.gemini,
+  ): Promise<string | null> {
     try {
       const fileName = path.basename(filePath) || '';
 
@@ -42,10 +93,12 @@ export class GeminiService {
         });
       }
       if (file.state === 'FAILED') {
-        throw new Error('File processing failed.');
+        console.error('[GeminiService] File processing failed.');
+        return null;
       }
 
       // Add the file to the contents.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const content: any = [prompt]; // TODO: fix type
 
       if (file.uri && file.mimeType) {
@@ -69,7 +122,7 @@ export class GeminiService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
@@ -119,20 +172,34 @@ export class GeminiService {
       return null;
     }
   }
+
+  public async generateFinalRequest(text: string): Promise<string | null> {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-2.5-pro-preview-05-06',
+        contents: [text],
+      });
+      console.log('Final request:', response?.text);
+      return response?.text || null;
+    } catch (error) {
+      console.error('Error generating final request:', error);
+      return null;
+    }
+  }
 }
 
-function parseResponse(text: string): TenderResponse {
+function parseResponse(text: string): TenderResponse | null {
   try {
     // Extract JSON from the text block
     const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
     if (!jsonMatch) {
-      throw new Error('No JSON data found in response');
+      return null;
     }
 
     const jsonStr = jsonMatch[1];
     return JSON.parse(jsonStr) as TenderResponse;
   } catch (error) {
     console.error('Error parsing Claude response:', error);
-    throw error;
+    return null;
   }
 }

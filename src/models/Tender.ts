@@ -1,7 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { IAnalytics } from './Analytics';
-import { IReport } from './Report';
-import { TenderResponse } from '../services/ClaudeService';
+import { TenderResponse } from '../services/GeminiService';
 
 interface IAnalyzedFile {
   analyzedFile: string;
@@ -11,11 +9,10 @@ interface IAnalyzedFile {
 export interface ITender extends Document {
   regNumber: string;
   tender: {
-    ordinalNumber: number;
     name: string;
     beginPrice: number;
-    publishDate: Date;
-    endDate: Date;
+    publishDate: string;
+    endDate: string;
     region: string;
     typeName: string;
     lotCategories?: string[];
@@ -44,15 +41,13 @@ export interface ITender extends Document {
       }[];
     }[];
   }[];
-  analytics: IAnalytics | null;
-  reports: IReport[] | null;
+  finalReport: string | null;
 }
 
 const TenderSchema = new Schema<ITender>(
   {
     regNumber: { type: String, required: true },
     tender: {
-      ordinalNumber: { type: Number, required: true },
       name: { type: String, required: true },
       beginPrice: { type: Number, required: true },
       publishDate: { type: Date, required: true },
@@ -74,18 +69,6 @@ const TenderSchema = new Schema<ITender>(
       {
         analyzedFile: { type: String, required: true },
         response: { type: String, required: true },
-      },
-    ],
-    analytics: {
-      type: Schema.Types.ObjectId,
-      ref: 'Analytics',
-      default: null,
-    },
-    reports: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Report',
-        default: null,
       },
     ],
     claudeResponse: {
@@ -111,6 +94,7 @@ const TenderSchema = new Schema<ITender>(
         ],
       },
     ],
+    finalReport: { type: String, default: null },
   },
   {
     timestamps: true,

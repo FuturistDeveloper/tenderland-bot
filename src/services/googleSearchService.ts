@@ -3,8 +3,6 @@ import dotenv from 'dotenv';
 import { JSDOM } from 'jsdom';
 import * as fs from 'fs';
 import * as path from 'path';
-import { GeminiService } from './GeminiService';
-import { Config } from '../config/config';
 
 dotenv.config();
 
@@ -23,12 +21,6 @@ export class GoogleSearchService {
   constructor() {
     this.apiKey = process.env.GOOGLE_API_KEY || '';
     this.searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || '';
-
-    if (!this.apiKey || !this.searchEngineId) {
-      throw new Error(
-        'Google API key and Search Engine ID must be provided in environment variables',
-      );
-    }
   }
 
   public async fetchWebpageContent(url: string): Promise<string> {
@@ -106,38 +98,7 @@ export class GoogleSearchService {
     }
   }
 
-  public async downloadAndAnalyzeWithGemini(
-    url: string,
-    outputPath: string,
-    config: Config,
-  ): Promise<string> {
-    try {
-      // First download the HTML
-      const htmlContent = await this.downloadHtml(url, outputPath);
-
-      if (!htmlContent) {
-        throw new Error('Failed to download HTML content');
-      }
-
-      // Initialize Gemini service
-      const geminiService = new GeminiService(config);
-
-      // Analyze the downloaded file with Gemini
-      const analysis = await geminiService.generateResponse(outputPath);
-
-      return analysis;
-    } catch (error) {
-      console.error('Error in downloadAndAnalyzeWithGemini:', error);
-      throw error;
-    }
-  }
-
-  // 10 results per query
-  async search(
-    query: string,
-    numResults: number = 3,
-    // fetchContent: boolean = true,
-  ): Promise<GoogleSearchResult[]> {
+  async search(query: string, numResults: number = 3): Promise<GoogleSearchResult[]> {
     try {
       const response = await axios.get(this.baseUrl, {
         params: {
@@ -155,22 +116,10 @@ export class GoogleSearchService {
         snippet: item.snippet,
       }));
 
-      // if (fetchContent) {
-      //   // Fetch content for each result in parallel
-      //   const contentPromises = results.map(async (result: GoogleSearchResult) => {
-      //     const content = await this.fetchWebpageContent(result.link);
-      //     return { ...result, content };
-      //   });
-
-      //   return await Promise.all(contentPromises);
-      // }
-
-      console.log('Results', results);
-
       return results;
     } catch (error) {
       console.error('Error performing Google search:', error);
-      throw new Error('Failed to perform Google search');
+      return [];
     }
   }
 }

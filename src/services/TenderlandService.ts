@@ -12,6 +12,7 @@ import {
   CreateTaskResponseSchema,
   TendersResponse,
   TendersResponseSchema,
+  TenderType,
 } from '../schemas/tenderland.schema';
 import { handleApiError } from '../utils/error-handler';
 
@@ -127,6 +128,63 @@ export class TenderlandService {
     }
   }
 
+  async getTender(regNumber: string): Promise<null | {
+    isProcessed: boolean;
+    finalReport: string | null;
+    regNumber: string;
+    files: string;
+  }> {
+    const oldTender = await Tender.findOne({ regNumber }).select(
+      'regNumber tender.files isProcessed finalReport',
+    );
+    if (!oldTender) {
+      console.log('Старый тендер не найден в БД', regNumber);
+
+      console.log('Ищем новый тендер в Тендерленде', regNumber);
+      const newTender = await this.getTenderByRegNumber(regNumber);
+      if (!newTender) {
+        return null;
+      }
+
+      await Tender.create({
+        regNumber: newTender.regNumber,
+        tender: newTender,
+      });
+
+      return {
+        isProcessed: false,
+        finalReport: null,
+        regNumber: newTender.regNumber,
+        files: newTender.files,
+      };
+    } else {
+      console.log('Старый тендер найден в БД', oldTender);
+      return {
+        isProcessed: oldTender.isProcessed,
+        finalReport: oldTender.finalReport,
+        regNumber: oldTender.regNumber,
+        files: oldTender.tender.files,
+      };
+    }
+  }
+
+  async getTenderByRegNumber(
+    regNumber: string,
+    exportViewId: number = 1,
+  ): Promise<TenderType | null> {
+    try {
+      console.log('Getting tender by reg number:', regNumber);
+      const tender = await this.axiosInstance.get(
+        `/Search/Get?keys=${regNumber}&exportViewId=${exportViewId}`,
+      );
+      const data = TendersResponseSchema.parse(tender.data);
+      return data.items[0].tender;
+    } catch (error) {
+      console.log('[getTenderByRegNumber] Тендер не найден', error);
+      return null;
+    }
+  }
+
   //   async processTender(filePaths: IFilePath[]): Promise<void> {
   //     for (const filePath of filePaths) {
   //       // console.log('Waiting 10 minutes');
@@ -174,7 +232,10 @@ export class TenderlandService {
     }
   }
 
-  async downloadZipFileAndUnpack(folderName: string, url: string): Promise<string[]> {
+  async downloadZipFileAndUnpack(
+    folderName: string,
+    url: string,
+  ): Promise<{ files: string[]; parentFolder: string } | null> {
     try {
       const agent = new https.Agent({
         rejectUnauthorized: false,
@@ -296,7 +357,17 @@ export class TenderlandService {
             const convertedFile = await this.convertWordToPdf(file);
 
             // Move the converted file to the converted directory
+            if (!convertedFile) {
+              console.error(`Failed to convert file ${file}`);
+              continue;
+            }
+
             const convertedFileName = path.basename(convertedFile);
+            if (!convertedFileName) {
+              console.error(`Failed to get converted file name for ${convertedFile}`);
+              continue;
+            }
+
             const finalPath = path.join(convertedPath, convertedFileName);
 
             // If the converted file is in a different location, move it
@@ -355,6 +426,10 @@ export class TenderlandService {
                 try {
                   console.log(`Processing extracted file: ${extractedFile}`);
                   const convertedFile = await this.convertWordToPdf(extractedFile);
+                  if (!convertedFile) {
+                    console.error(`Failed to convert extracted file ${extractedFile}`);
+                    continue;
+                  }
                   const finalPath = path.join(convertedPath, path.basename(convertedFile));
 
                   if (convertedFile !== finalPath) {
@@ -394,8 +469,11 @@ export class TenderlandService {
         }
       }
 
-      // Return both original and converted files
-      return convertedFiles;
+      // Return both converted files and parent folder path
+      return {
+        files: convertedFiles,
+        parentFolder: tenderPath,
+      };
     } catch (error) {
       console.error('Error in downloadZipFileAndUnpack:', error);
       if (error instanceof Error) {
@@ -405,27 +483,19 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
-  async cleanupExtractedFiles(filePaths: string[]): Promise<void> {
-    const extractPath = path.join(process.cwd(), 'tenderland');
-
-    // Remove all files
-    for (const filePath of filePaths) {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
-
-    // Remove the directory
-    if (fs.existsSync(extractPath)) {
-      fs.rmdirSync(extractPath, { recursive: true });
+  async cleanupExtractedFiles(parentFolder: string): Promise<void> {
+    // Remove the directory and all contents recursively
+    console.log('Removing directory:', parentFolder);
+    if (fs.existsSync(parentFolder)) {
+      fs.rmSync(parentFolder, { recursive: true, force: true });
     }
   }
 
-  async convertWordToPdf(filePath: string): Promise<string> {
+  async convertWordToPdf(filePath: string): Promise<string | null> {
     try {
       const fileExt = path.extname(filePath).toLowerCase();
       if (fileExt === '.docx') {
@@ -435,9 +505,10 @@ export class TenderlandService {
       } else if (fileExt === '.xlsx' || fileExt === '.xls') {
         return await this.convertExcelToCsv(filePath);
       } else {
-        throw new Error(
+        console.log(
           'File is not supported. Only .doc, .docx, .xls, and .xlsx files are supported.',
         );
+        return null;
       }
     } catch (error) {
       console.error('Error in convertWordToPdf:', error);
@@ -448,11 +519,11 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
-  private async convertDocToText(filePath: string): Promise<string> {
+  private async convertDocToText(filePath: string): Promise<string | null> {
     try {
       const txtPath = filePath.replace(/\.doc$/i, '.txt');
       console.log(`Converting ${filePath} to text: ${txtPath}`);
@@ -489,11 +560,11 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
-  private async convertDocxToPdf(filePath: string): Promise<string> {
+  private async convertDocxToPdf(filePath: string): Promise<string | null> {
     try {
       const pdfPath = filePath.replace(/\.docx$/i, '.pdf');
       console.log(`Converting ${filePath} to PDF: ${pdfPath}`);
@@ -551,11 +622,11 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 
-  private async convertExcelToCsv(filePath: string): Promise<string> {
+  private async convertExcelToCsv(filePath: string): Promise<string | null> {
     try {
       console.log(`Converting Excel file to CSV: ${filePath}`);
 
@@ -599,7 +670,7 @@ export class TenderlandService {
           stack: error.stack,
         });
       }
-      throw error;
+      return null;
     }
   }
 }
