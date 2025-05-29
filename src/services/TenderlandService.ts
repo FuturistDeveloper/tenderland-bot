@@ -1,7 +1,7 @@
 import AdmZip from 'adm-zip';
 import axios, { AxiosInstance } from 'axios';
 import fs from 'fs';
-import htmlPdf from 'html-pdf';
+import puppeteer from 'puppeteer';
 import mammoth from 'mammoth';
 import path from 'path';
 import { ENV } from '..';
@@ -575,44 +575,82 @@ export class TenderlandService {
       // Convert to HTML
       const result = await mammoth.convertToHtml({ buffer });
       const html = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <style>
-                        body { font-family: Arial, sans-serif; }
-                        img { max-width: 100%; }
-                    </style>
-                </head>
-                <body>
-                    ${result.value}
-                </body>
-                </html>
-            `;
-
-      // Convert HTML to PDF
-      await new Promise<void>((resolve, reject) => {
-        htmlPdf
-          .create(html, {
-            format: 'A4',
-            border: {
-              top: '20mm',
-              right: '20mm',
-              bottom: '20mm',
-              left: '20mm',
-            },
-          })
-          .toFile(pdfPath, (err: Error | null) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 20mm;
+              line-height: 1.5;
             }
-          });
+            img {
+              max-width: 100%;
+              height: auto;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              margin: 1em 0;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px;
+            }
+            th {
+              background-color: #f5f5f5;
+            }
+          </style>
+        </head>
+        <body>
+          ${result.value}
+        </body>
+        </html>
+      `;
+
+      // Create a temporary HTML file
+      const tempHtmlPath = filePath.replace(/\.docx$/i, '.html');
+      await fs.promises.writeFile(tempHtmlPath, html, 'utf8');
+
+      // Launch Puppeteer
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
 
-      console.log('Conversion completed successfully');
-      return pdfPath;
+      try {
+        const page = await browser.newPage();
+
+        // Set content and wait for network idle
+        await page.setContent(html, {
+          waitUntil: 'networkidle0',
+        });
+
+        // Generate PDF
+        await page.pdf({
+          path: pdfPath,
+          format: 'A4',
+          margin: {
+            top: '20mm',
+            right: '20mm',
+            bottom: '20mm',
+            left: '20mm',
+          },
+          printBackground: true,
+          displayHeaderFooter: true,
+          headerTemplate: '<div></div>',
+          footerTemplate:
+            '<div style="font-size: 10px; text-align: center; width: 100%; margin: 0 20mm;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+        });
+
+        console.log('Conversion completed successfully');
+        return pdfPath;
+      } finally {
+        // Clean up
+        await browser.close();
+        await fs.promises.unlink(tempHtmlPath);
+      }
     } catch (error) {
       console.error('Error in convertDocxToPdf:', error);
       if (error instanceof Error) {
