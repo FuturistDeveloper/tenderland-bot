@@ -60,6 +60,8 @@ export const getAnalyticsForTenders = async (
       return 'Не удалось скачать или распаковать файлы';
     }
 
+    console.log('unpackedFiles', unpackedFiles);
+
     // // 2 STEP: Анализ тендера с помощью Gemini Pro
     // const claudeResponse = await tenderAnalyticsService.analyzeTender(
     //   tender.regNumber,
