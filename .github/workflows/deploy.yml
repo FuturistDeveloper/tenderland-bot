@@ -20,6 +20,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            source ~/.bashrc
             cd /home/tenderlandprod/tenderland-bot
             git pull
             npm install
