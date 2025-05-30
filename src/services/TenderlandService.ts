@@ -40,7 +40,7 @@ export class TenderlandService {
     this.proxy = {
       host: 'proxy.toolip.io',
       port: 31113,
-      auth: { username: 'b0d5a533', password: '8nbf88iu8gym' },
+      auth: { username: '09f547a3', password: '4lmrao4y2d2x' },
     };
 
     this.axiosInstance = axios.create({
