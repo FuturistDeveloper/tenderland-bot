@@ -1,8 +1,8 @@
 import { createPartFromUri, GoogleGenAI } from '@google/genai';
 import path from 'path';
-import { Config } from '../config/config';
 import { PROMPT } from '../constants/prompt';
 import { ENV } from '../index';
+import parseResponse from '../utils/parsing';
 
 export interface TenderResponse {
   tender: {
@@ -58,12 +58,9 @@ export interface TenderResponse {
 }
 
 export class GeminiService {
-  private readonly config: Config;
   private readonly ai: GoogleGenAI;
 
-  constructor(config: Config) {
-    this.config = config;
-
+  constructor() {
     this.ai = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
   }
 
@@ -185,21 +182,5 @@ export class GeminiService {
       console.error('Error generating final request:', error);
       return null;
     }
-  }
-}
-
-function parseResponse(text: string): TenderResponse | null {
-  try {
-    // Extract JSON from the text block
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
-    if (!jsonMatch) {
-      return null;
-    }
-
-    const jsonStr = jsonMatch[1];
-    return JSON.parse(jsonStr) as TenderResponse;
-  } catch (error) {
-    console.error('Error parsing Claude response:', error);
-    return null;
   }
 }

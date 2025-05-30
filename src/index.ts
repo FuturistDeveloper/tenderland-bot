@@ -6,9 +6,9 @@ import { BotService } from './services/BotService';
 import { TenderlandService } from './services/TenderlandService';
 import { validateEnv } from './utils/env';
 import { Context } from 'telegraf';
+import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
-import { TenderAnalyticsService } from './services/TenderAnalyticsService';
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ const app = express();
 app.use(express.json());
 
 const tenderlandService = new TenderlandService(config);
-const tenderAnalyticsService = new TenderAnalyticsService(config);
+const tenderService = new TenderAnalyticsService();
 const botService = new BotService();
 
 connectDB();
@@ -63,10 +63,7 @@ export const getAnalyticsForTenders = async (
     console.log('unpackedFiles', unpackedFiles);
 
     // 2 STEP: Анализ тендера с помощью Gemini Pro
-    const claudeResponse = await tenderAnalyticsService.analyzeTender(
-      tender.regNumber,
-      unpackedFiles.files,
-    );
+    const claudeResponse = await tenderService.analyzeTender(tender.regNumber, unpackedFiles.files);
 
     // // 3 STEP: Удалить распакованные файлы
     await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
@@ -77,11 +74,11 @@ export const getAnalyticsForTenders = async (
     }
 
     // 4 STEP: Анализ товаров
-    const isAnalyzed = await tenderAnalyticsService.analyzeItems(tender.regNumber, claudeResponse);
+    const isAnalyzed = await tenderService.analyzeItems(tender.regNumber, claudeResponse);
 
     if (isAnalyzed) {
       // 5 STEP: Генерация отчета
-      const finalReport = await tenderAnalyticsService.generateFinalReport(tender.regNumber);
+      const finalReport = await tenderService.generateFinalReport(tender.regNumber);
 
       if (finalReport) {
         const halfLength = Math.ceil(finalReport.length / 2);
@@ -95,7 +92,6 @@ export const getAnalyticsForTenders = async (
     } else {
       return 'Не удалось проанализировать товары';
     }
-    return 'bla';
   } catch (err) {
     console.error('Error in analytics job:', err);
     return `Произошла ошибка при анализе тендера: ${regNumber}`;
@@ -116,7 +112,7 @@ app.get('/api', (req, res) => {
 
 app.get('/api/test', async (req, res) => {
   try {
-    const gemini = new GeminiService(config);
+    const gemini = new GeminiService();
     const response = await gemini.generateFinalRequest('whats the weather in moscow');
     return res.send(response);
   } catch (error) {

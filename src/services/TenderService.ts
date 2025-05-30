@@ -1,9 +1,8 @@
 import * as fs from 'fs';
-import { Config } from '../config/config';
 import { Tender } from '../models/Tender';
 import { GeminiService, TenderResponse } from './GeminiService';
-import { GoogleSearchService } from './googleSearchService';
-import { getFinalPrompt, PROMPT } from '../constants/prompt';
+import { GoogleSearchService } from './GoogleService';
+import { formatTenderData, PROMPT } from '../constants/prompt';
 import { OpenAIService } from './OpenAIService';
 import path from 'path';
 
@@ -17,9 +16,9 @@ export class TenderAnalyticsService {
   private openAIService: OpenAIService;
   googleSearch = new GoogleSearchService();
 
-  constructor(config: Config) {
-    this.geminiService = new GeminiService(config);
-    this.openAIService = new OpenAIService(config);
+  constructor() {
+    this.geminiService = new GeminiService();
+    this.openAIService = new OpenAIService();
   }
 
   // private async saveAnalysisToFile(
@@ -238,7 +237,7 @@ export class TenderAnalyticsService {
     return results;
   }
 
-  public async generateFinalReport(regNumber: string = '32514850391testv3all') {
+  public async generateFinalReport(regNumber: string): Promise<string | null> {
     try {
       const tender = await Tender.findOne({ regNumber });
 
@@ -247,10 +246,10 @@ export class TenderAnalyticsService {
         return 'Тендер не найден в базе данных для генерации отчета';
       }
 
-      const text = getFinalPrompt(tender);
+      const text = formatTenderData(tender);
 
       console.log('Генерация финального отчета для тендера:', regNumber);
-      const answer = await this.openAIService.generateResponse(text);
+      const answer = await this.openAIService.generateFinalRequest(text);
 
       if (!answer) {
         console.error('[generateFinalReport] Не удалось получить ответ от ИИ');
