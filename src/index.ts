@@ -18,7 +18,7 @@ const app = express();
 app.use(express.json());
 
 const tenderlandService = new TenderlandService(config);
-const tenderAnalyticsService = new TenderAnalyticsService();
+const tenderService = new TenderAnalyticsService();
 const botService = new BotService();
 
 connectDB();
@@ -62,10 +62,7 @@ export const getAnalyticsForTenders = async (
     console.log('unpackedFiles', unpackedFiles);
 
     // 2 STEP: Анализ тендера с помощью Gemini Pro
-    const claudeResponse = await tenderAnalyticsService.analyzeTender(
-      tender.regNumber,
-      unpackedFiles.files,
-    );
+    const claudeResponse = await tenderService.analyzeTender(tender.regNumber, unpackedFiles.files);
 
     // // 3 STEP: Удалить распакованные файлы
     await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
@@ -76,11 +73,11 @@ export const getAnalyticsForTenders = async (
     }
 
     // 4 STEP: Анализ товаров
-    const isAnalyzed = await tenderAnalyticsService.analyzeItems(tender.regNumber, claudeResponse);
+    const isAnalyzed = await tenderService.analyzeItems(tender.regNumber, claudeResponse);
 
     if (isAnalyzed) {
       // 5 STEP: Генерация отчета
-      const finalReport = await tenderAnalyticsService.generateFinalReport(tender.regNumber);
+      const finalReport = await tenderService.generateFinalReport(tender.regNumber);
 
       if (finalReport) {
         const halfLength = Math.ceil(finalReport.length / 2);
