@@ -7,7 +7,8 @@ import { BotService } from './services/BotService';
 import { TenderlandService } from './services/TenderlandService';
 import { validateEnv } from './utils/env';
 import { Context } from 'telegraf';
-import { GeminiService } from './services/GeminiService';
+// import { GeminiService } from './services/GeminiService';
+import { GoogleSearchService } from './services/googleSearchService';
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ app.use(express.json());
 
 const tenderlandService = new TenderlandService(config);
 // const tenderAnalyticsService = new TenderAnalyticsService(config);
-const geminiService = new GeminiService(config);
+// const geminiService = new GeminiService(config);
 const botService = new BotService();
 
 connectDB();
@@ -116,11 +117,10 @@ app.get('/api', (req, res) => {
 
 app.get('/api/test', async (req, res) => {
   try {
-    const response = await geminiService.generateFinalRequest('How is the weather in NY');
-    if (!response) {
-      return res.status(500).send('Не удалось получить ответ от ИИ');
-    }
-    return res.send(response);
+    const google = new GoogleSearchService();
+    const search = await google.search('How is the weather in NY');
+    console.log('search', search);
+    return res.send(search);
   } catch (error) {
     console.error('Error in test job:', error);
     return res.status(500).send('Произошла ошибка при тестировании');
