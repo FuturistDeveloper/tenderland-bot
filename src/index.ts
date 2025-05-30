@@ -3,12 +3,11 @@ import express from 'express';
 import { getConfig } from './config/config';
 import { connectDB } from './config/database';
 import { BotService } from './services/BotService';
-// import { TenderAnalyticsService } from './services/TenderAnalyticsService';
 import { TenderlandService } from './services/TenderlandService';
 import { validateEnv } from './utils/env';
 import { Context } from 'telegraf';
 // import { GeminiService } from './services/GeminiService';
-import { GeminiService } from './services/GeminiService';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -117,9 +116,10 @@ app.get('/api', (req, res) => {
 
 app.get('/api/test', async (req, res) => {
   try {
-    const gemini = new GeminiService(config);
-    const response = await gemini.generateFinalRequest('whats the weather in moscow');
-    return res.send(response);
+    // const gemini = new GeminiService(config);
+    const response = await axios.get('https://www.dnsleaktest.com/');
+    console.log(response.data);
+    return res.send(response.data);
   } catch (error) {
     console.error('Error in test job:', error);
     return res.status(500).send('Произошла ошибка при тестировании');
