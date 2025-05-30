@@ -6,8 +6,9 @@ import { BotService } from './services/BotService';
 import { TenderlandService } from './services/TenderlandService';
 import { validateEnv } from './utils/env';
 import { Context } from 'telegraf';
-import { GoogleSearchService } from './services/GoogleService';
 import { TenderAnalyticsService } from './services/TenderService';
+import axios from 'axios';
+import { GeminiService } from './services/GeminiService';
 
 dotenv.config();
 
@@ -111,14 +112,18 @@ app.get('/api', (req, res) => {
 
 app.get('/api/test', async (req, res) => {
   try {
-    const google = new GoogleSearchService();
-    const search = await google.search('How is the weather in NY');
-    console.log('search', search);
-    return res.send(search);
+    const gemini = new GeminiService();
+    const response = await gemini.generateFinalRequest('whats the weather in moscow');
+    return res.send(response);
   } catch (error) {
     console.error('Error in test job:', error);
     return res.status(500).send('Произошла ошибка при тестировании');
   }
+});
+
+app.get('/api/test2', async (req, res) => {
+  const response = await axios.get('https://www.dnsleaktest.com/');
+  return res.send(response.data);
 });
 
 process.once('SIGINT', () => botService.stop('SIGINT'));
