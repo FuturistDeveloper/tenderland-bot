@@ -40,7 +40,11 @@ export class TenderlandService {
     this.proxy = {
       host: 'proxy.toolip.io',
       port: 31113,
-      auth: { username: '09f547a3', password: '4lmrao4y2d2x' },
+      auth: {
+        username:
+          '8c5906b99fbd1c0bcd0f916d545c565ab1708e0be0f1496baf997f51b30a755f33f856d7d162eb0468f21a595aed6361a78de16df55e62667af44347edfe74b2b091ead69511bdde611e51d3ec97887f',
+        password: 'imsp9d74sdxw',
+      },
     };
 
     this.axiosInstance = axios.create({
@@ -240,7 +244,7 @@ export class TenderlandService {
       console.log(`Downloading zip file from URL: ${url}`);
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
-        // proxy: this.proxy,
+        proxy: this.proxy,
         httpsAgent: agent,
       });
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
