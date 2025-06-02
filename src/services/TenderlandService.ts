@@ -49,7 +49,8 @@ export class TenderlandService {
 
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
-      // proxy: this.proxy,
+      timeout: 15000,
+      proxy: this.proxy,
       httpsAgent: new https.Agent({
         rejectUnauthorized: false,
       }),
