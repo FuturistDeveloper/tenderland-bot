@@ -243,7 +243,7 @@ export class TenderAnalyticsService {
 
       if (!tender) {
         console.error('[generateFinalReport] Тендер не найден');
-        return 'Тендер не найден в базе данных для генерации отчета';
+        return null;
       }
 
       const text = formatTenderData(tender);
@@ -253,7 +253,7 @@ export class TenderAnalyticsService {
 
       if (!answer) {
         console.error('[generateFinalReport] Не удалось получить ответ от ИИ');
-        return 'Не удалось получить ответ от ИИ';
+        return null;
       }
 
       await Tender.findOneAndUpdate({ regNumber }, { isProcessed: true, finalReport: answer });
@@ -261,7 +261,7 @@ export class TenderAnalyticsService {
       return answer;
     } catch (err) {
       console.error('[generateFinalReport] Ошибка при генерации отчета:', err);
-      return 'Произошла ошибка при генерации отчета';
+      return null;
     }
   }
 }
