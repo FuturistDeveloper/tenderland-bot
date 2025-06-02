@@ -149,4 +149,17 @@ export class OpenAIService {
       return null;
     }
   }
+
+  public async generateTest(text: string): Promise<string | null> {
+    try {
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: text }],
+      });
+      return response.choices[0].message.content || null;
+    } catch (error) {
+      console.error('Error generating test:', error);
+      return null;
+    }
+  }
 }
