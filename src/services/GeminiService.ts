@@ -3,8 +3,6 @@ import path from 'path';
 import { PROMPT } from '../constants/prompt';
 import { ENV } from '../index';
 import parseResponse from '../utils/parsing';
-import fetch from 'node-fetch';
-import * as tunnel from 'tunnel';
 
 export interface TenderResponse {
   tender: {
@@ -63,22 +61,22 @@ export class GeminiService {
   private readonly ai: GoogleGenAI;
 
   constructor() {
-    const agent = tunnel.httpsOverHttp({
-      proxy: {
-        host: 'proxy.toolip.io',
-        port: 31113,
-        proxyAuth:
-          '8c5906b99fbd1c0bcd0f916d545c565ab1708e0be0f1496baf997f51b30a755f33f856d7d162eb0468f21a595aed6361a78de16df55e62667af44347edfe74b2b091ead69511bdde611e51d3ec97887f:imsp9d74sdxw',
-      },
-    });
+    // const agent = tunnel.httpsOverHttp({
+    //   proxy: {
+    //     host: 'proxy.toolip.io',
+    //     port: 31113,
+    //     proxyAuth:
+    //       '8c5906b99fbd1c0bcd0f916d545c565ab1708e0be0f1496baf997f51b30a755f33f856d7d162eb0468f21a595aed6361a78de16df55e62667af44347edfe74b2b091ead69511bdde611e51d3ec97887f:imsp9d74sdxw',
+    //   },
+    // });
 
-    // @ts-expect-error - proxy configuration
-    globalThis.fetch = (url: string, options: any) => {
-      return fetch(url, {
-        ...options,
-        agent,
-      });
-    };
+    // // @ts-expect-error - proxy configuration
+    // globalThis.fetch = (url: string, options: any) => {
+    //   return fetch(url, {
+    //     ...options,
+    //     agent,
+    //   });
+    // };
 
     this.ai = new GoogleGenAI({
       apiKey: ENV.GEMINI_API_KEY,
