@@ -13,6 +13,19 @@ export class OpenAIService {
   constructor() {
     this.client = new OpenAI({
       apiKey: ENV.OPENAI_API_KEY,
+      baseURL: 'https://api.openai.com/v1',
+      // TODO: For hosting
+      // httpAgent: {
+      //   proxy: {
+      //     host: 'proxy.toolip.io',
+      //     port: 31113,
+      //     auth: {
+      //       username:
+      //         '8c5906b99fbd1c0bcd0f916d545c565ab1708e0be0f1496baf997f51b30a755f33f856d7d162eb0468f21a595aed6361a78de16df55e62667af44347edfe74b2b091ead69511bdde611e51d3ec97887f',
+      //       password: 'imsp9d74sdxw',
+      //     },
+      //   },
+      // },
     });
   }
 
