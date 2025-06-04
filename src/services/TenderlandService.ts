@@ -18,6 +18,8 @@ import puppeteer from 'puppeteer';
 import textract from 'textract';
 import xlsx from 'xlsx';
 import https from 'https';
+import { BotService } from './BotService';
+import { User } from '../models/User';
 
 export class TenderlandService {
   private readonly baseUrl: string;
@@ -32,9 +34,11 @@ export class TenderlandService {
     };
   };
   private readonly config: Config;
+  private readonly bot: BotService;
 
   constructor(config: Config) {
     this.config = config;
+    this.bot = new BotService();
     this.baseUrl = 'https://tenderland.ru/api/v1';
     this.apiKey = ENV.TENDERLAND_API_KEY;
     this.proxy = {
@@ -104,8 +108,6 @@ export class TenderlandService {
                 customers: tenderData.customers,
               },
               isProcessed: false,
-              analytics: null,
-              reports: null,
             },
           },
           {
@@ -131,18 +133,75 @@ export class TenderlandService {
   }
 
   async getNewTenders() {
-    const tenders = await this.getTenders();
-    const newTenders = tenders?.items.filter(async (tender) => {
-      const tenderData = tender.tender;
-      const oldTender = await Tender.exists({ regNumber: tenderData.regNumber });
-      if (!oldTender) {
-        console.log('New tender found', tenderData.regNumber);
-        return true;
-      }
-      return false;
-    });
+    const lastTender = await Tender.find({}).sort({ 'tender.ordinalNumber': -1 }).limit(1);
+    // .select('tender.ordinalNumber');
 
-    console.log(newTenders, newTenders?.length, tenders?.items.length);
+    console.log('FIRST', lastTender[0]?.tender.ordinalNumber);
+
+    if (lastTender[0]) {
+      console.log('SECOND', lastTender[0].tender.ordinalNumber);
+    }
+    // console.log('[getNewTenders] Last tender', lastTender);
+
+    // console.log('[getNewTenders] Getting new tenders');
+    // const task = await this.createTaskForGettingTenders();
+
+    // if (!task) {
+    //   console.error('[getNewTenders] Error getting task');
+    //   return;
+    // }
+
+    // const tenders = await this.getTendersByTaskId(task.Id);
+
+    // if (!tenders) {
+    //   console.error('[getNewTenders] There are no new tenders');
+    //   return;
+    // }
+
+    // const newTenders = tenders?.items.filter(async (tender) => {
+    //   const tenderData = tender.tender;
+    //   const oldTender = await Tender.exists({ regNumber: tenderData.regNumber });
+    //   if (!oldTender) {
+    //     console.log('New tender found', tenderData.regNumber);
+
+    //     await Tender.create({
+    //       regNumber: tenderData.regNumber,
+    //       tender: {
+    //         ordinalNumber: tender.ordinalNumber,
+    //         name: tenderData.name,
+    //         beginPrice: tenderData.beginPrice,
+    //         publishDate: tenderData.publishDate,
+    //         endDate: tenderData.endDate,
+    //         region: tenderData.region,
+    //         typeName: tenderData.typeName,
+    //         lotCategories: tenderData.lotCategories,
+    //         files: tenderData.files,
+    //         module: tenderData.module,
+    //         etpLink: tenderData.etpLink,
+    //         customers: tenderData.customers,
+    //       },
+    //       isProcessed: false,
+    //     });
+
+    //     return true;
+    //   }
+    //   return false;
+    // });
+
+    // newTenders.forEach(async (tender) => {
+    //   await User.find({
+    //     telegramId: 1692802419, // TODO: Remove after
+    //   })
+    //     .cursor()
+    //     .eachAsync(async (user) => {
+    //       await this.bot.sendMessage(
+    //         user.telegramId,
+    //         `Новый тендер найден: ${tender.tender.name} ${tender.tender.regNumber}`,
+    //       );
+    //     });
+    // });
+
+    // console.log(newTenders?.length, tenders?.items.length);
   }
 
   async getTender(regNumber: string): Promise<null | {
@@ -242,6 +301,7 @@ export class TenderlandService {
   async getTendersByTaskId(taskId: number): Promise<TendersResponse | undefined> {
     try {
       const response = await this.axiosInstance.get(`/Export/Get?exportId=${taskId}`);
+      console.log('Getting tenders by task id with url:', response.request.res.responseUrl);
       const data = TendersResponseSchema.parse(response.data);
       return data;
     } catch (error) {
