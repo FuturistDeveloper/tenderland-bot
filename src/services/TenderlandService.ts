@@ -227,6 +227,23 @@ export class TenderlandService {
         PROMPT.noticeOfPurchase,
       );
 
+      const maxLength = 4096; // Telegram message length limit
+      const chunks: string[] = [];
+      let currentChunk = '';
+
+      const words = response?.split(' ') || [];
+      for (const word of words) {
+        if ((currentChunk + word).length >= maxLength) {
+          chunks.push(currentChunk);
+          currentChunk = word + ' ';
+        } else {
+          currentChunk += word + ' ';
+        }
+      }
+      if (currentChunk) {
+        chunks.push(currentChunk);
+      }
+
       await this.cleanupExtractedFiles(unpackedFiles.parentFolder);
 
       await User.find({
@@ -234,10 +251,10 @@ export class TenderlandService {
       })
         .cursor()
         .eachAsync(async (user) => {
-          await this.bot.sendMessage(
-            user.telegramId,
-            `Новый тендер найден: ${tender.tender.name} ${response}`,
-          );
+          await this.bot.sendMessage(user.telegramId, `Новый тендер найден: ${tender.tender.name}`);
+          for (const chunk of chunks) {
+            await this.bot.sendMessage(user.telegramId, chunk);
+          }
         });
     }
   }
