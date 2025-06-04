@@ -244,7 +244,7 @@ export class TenderlandService {
       // });
       console.log(`Downloading zip file from URL: ${url}`);
       const response = await axios.get(url, {
-        responseType: 'arraybuffer',
+        // responseType: 'arraybuffer',
         // proxy: this.proxy,
         // httpsAgent: agent,
       });
