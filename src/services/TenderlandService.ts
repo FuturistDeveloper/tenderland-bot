@@ -243,16 +243,13 @@ export class TenderlandService {
       //   rejectUnauthorized: false,
       // });
       console.log(`Downloading zip file from URL: ${url}`);
-      const response = await axios.get(url, {
-        // responseType: 'arraybuffer',
-        // proxy: this.proxy,
-        // httpsAgent: agent,
-      });
+      const response = await fetch(url);
+      const data = await response.arrayBuffer();
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
 
       console.log(`Writing zip file to: ${zipFilePath}`);
       // Write zip file
-      await fs.promises.writeFile(zipFilePath, response.data);
+      await fs.promises.writeFile(zipFilePath, Buffer.from(data));
 
       console.log('Unpacking zip file');
       // Unpack zip file
