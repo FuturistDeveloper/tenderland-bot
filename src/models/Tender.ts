@@ -9,6 +9,7 @@ interface IAnalyzedFile {
 export interface ITender extends Document {
   regNumber: string;
   tender: {
+    ordinalNumber?: number;
     name: string;
     beginPrice: number;
     publishDate: string;
