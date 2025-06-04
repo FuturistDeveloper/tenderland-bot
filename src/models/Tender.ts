@@ -49,6 +49,7 @@ const TenderSchema = new Schema<ITender>(
   {
     regNumber: { type: String, required: true },
     tender: {
+      ordinalNumber: { type: Number, default: null },
       name: { type: String, required: true },
       beginPrice: { type: Number, required: true },
       publishDate: { type: Date, required: true },
