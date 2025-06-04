@@ -134,9 +134,14 @@ app.get('/api/test/openai', async (req, res) => {
 });
 
 app.get('/api/test/zip', async (req, res) => {
+  console.log('test zip');
   const response = await axios.get(
     'https://tenderland.ru/Api/File/GetAll?entityId=TL2017285092&entityTypeId=1&apiKey=cebc71bc-ee83-4945-946c-97926f84790c',
+    {
+      responseType: 'arraybuffer',
+    },
   );
+  console.log(response.data);
   return res.send(response.data);
 });
 

@@ -239,14 +239,14 @@ export class TenderlandService {
     url: string,
   ): Promise<{ files: string[]; parentFolder: string } | null> {
     try {
-      const agent = new https.Agent({
-        rejectUnauthorized: false,
-      });
+      // const agent = new https.Agent({
+      //   rejectUnauthorized: false,
+      // });
       console.log(`Downloading zip file from URL: ${url}`);
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
         // proxy: this.proxy,
-        httpsAgent: agent,
+        // httpsAgent: agent,
       });
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
 
