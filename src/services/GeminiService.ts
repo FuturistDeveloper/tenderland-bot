@@ -61,7 +61,26 @@ export class GeminiService {
   private readonly ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
+    // const agent = tunnel.httpsOverHttp({
+    //   proxy: {
+    //     host: 'proxy.toolip.io',
+    //     port: 31113,
+    //     proxyAuth:
+    //       '8c5906b99fbd1c0bcd0f916d545c565ab1708e0be0f1496baf997f51b30a755f33f856d7d162eb0468f21a595aed6361a78de16df55e62667af44347edfe74b2b091ead69511bdde611e51d3ec97887f:imsp9d74sdxw',
+    //   },
+    // });
+
+    // // @ts-expect-error - proxy configuration
+    // globalThis.fetch = (url: string, options: any) => {
+    //   return fetch(url, {
+    //     ...options,
+    //     agent,
+    //   });
+    // };
+
+    this.ai = new GoogleGenAI({
+      apiKey: ENV.GEMINI_API_KEY,
+    });
   }
 
   public async generateResponse(
@@ -174,8 +193,9 @@ export class GeminiService {
     try {
       const response = await this.ai.models.generateContent({
         model: 'gemini-2.5-pro-preview-05-06',
-        contents: [text],
+        contents: [PROMPT.geminiFinalRequest + '\n\n' + text],
       });
+
       console.log('Final request:', response?.text);
       return response?.text || null;
     } catch (error) {

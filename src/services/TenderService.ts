@@ -3,7 +3,6 @@ import { Tender } from '../models/Tender';
 import { GeminiService, TenderResponse } from './GeminiService';
 import { GoogleSearchService } from './GoogleService';
 import { formatTenderData, PROMPT } from '../constants/prompt';
-import { OpenAIService } from './OpenAIService';
 import path from 'path';
 
 interface AnalyzedFile {
@@ -13,12 +12,10 @@ interface AnalyzedFile {
 
 export class TenderAnalyticsService {
   private geminiService: GeminiService;
-  private openAIService: OpenAIService;
   googleSearch = new GoogleSearchService();
 
   constructor() {
     this.geminiService = new GeminiService();
-    this.openAIService = new OpenAIService();
   }
 
   // private async saveAnalysisToFile(
@@ -249,7 +246,7 @@ export class TenderAnalyticsService {
       const text = formatTenderData(tender);
 
       console.log('Генерация финального отчета для тендера:', regNumber);
-      const answer = await this.openAIService.generateFinalRequest(text);
+      const answer = await this.geminiService.generateFinalRequest(text);
 
       if (!answer) {
         console.error('[generateFinalReport] Не удалось получить ответ от ИИ');

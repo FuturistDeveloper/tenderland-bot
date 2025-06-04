@@ -9,7 +9,6 @@ import { Context } from 'telegraf';
 import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
-import { OpenAIService } from './services/OpenAIService';
 import cron from 'node-cron';
 
 dotenv.config();
@@ -43,9 +42,27 @@ export const getAnalyticsForTenders = async (
 
     if (tender.isProcessed && tender.finalReport) {
       console.log('[getAnalyticsForTenders] Тендер уже был обработан');
-      const halfLength = Math.ceil(tender.finalReport.length / 2);
-      await ctx.reply(tender.finalReport.slice(0, halfLength));
-      await ctx.reply(tender.finalReport.slice(halfLength));
+      // const thirdLength = Math.ceil(tender.finalReport.length / 3);
+      const maxLength = 4096; // Telegram message length limit
+      const chunks = [];
+      let currentChunk = '';
+
+      const words = tender.finalReport.split(' ');
+      for (const word of words) {
+        if ((currentChunk + word).length >= maxLength) {
+          chunks.push(currentChunk);
+          currentChunk = word + ' ';
+        } else {
+          currentChunk += word + ' ';
+        }
+      }
+      if (currentChunk) {
+        chunks.push(currentChunk);
+      }
+
+      for (const chunk of chunks) {
+        await ctx.reply(chunk);
+      }
       return 'Тендер уже был обработан';
     }
 
@@ -83,9 +100,29 @@ export const getAnalyticsForTenders = async (
       const finalReport = await tenderService.generateFinalReport(tender.regNumber);
 
       if (finalReport) {
-        const halfLength = Math.ceil(finalReport.length / 2);
-        await ctx.reply(finalReport.slice(0, halfLength));
-        await ctx.reply(finalReport.slice(halfLength));
+        console.log('[getAnalyticsForTenders] Тендер уже был обработан');
+        // const thirdLength = Math.ceil(tender.finalReport.length / 3);
+        const maxLength = 4096; // Telegram message length limit
+        const chunks = [];
+        let currentChunk = '';
+
+        const words = finalReport.split(' ');
+        for (const word of words) {
+          if ((currentChunk + word).length >= maxLength) {
+            chunks.push(currentChunk);
+            currentChunk = word + ' ';
+          } else {
+            currentChunk += word + ' ';
+          }
+        }
+        if (currentChunk) {
+          chunks.push(currentChunk);
+        }
+
+        for (const chunk of chunks) {
+          await ctx.reply(chunk);
+        }
+        return 'Тендер уже был обработан';
       } else {
         await ctx.reply('Не удалось получить ответ от ИИ');
       }
@@ -121,7 +158,7 @@ app.get('/api', (req, res) => {
 app.get('/api/test/gemini', async (req, res) => {
   try {
     const gemini = new GeminiService();
-    const response = await gemini.generateFinalRequest('whats the weather in moscow');
+    const response = await gemini.generateResponseFromText('whats the weather in moscow');
     return res.send(response);
   } catch (error) {
     console.error('Error in test job:', error);
@@ -129,16 +166,16 @@ app.get('/api/test/gemini', async (req, res) => {
   }
 });
 
-app.get('/api/test/openai', async (req, res) => {
-  try {
-    const openai = new OpenAIService();
-    const response = await openai.generateTest('whats the weather in moscow');
-    return res.send(response);
-  } catch (error) {
-    console.error('Error in test job:', error);
-    return res.status(500).send('Произошла ошибка при тестировании');
-  }
-});
+// app.get('/api/test/openai', async (req, res) => {
+//   try {
+//     const openai = new OpenAIService();
+//     const response = await openai.generateTest('whats the weather in moscow');
+//     return res.send(response);
+//   } catch (error) {
+//     console.error('Error in test job:', error);
+//     return res.status(500).send('Произошла ошибка при тестировании');
+//   }
+// });
 
 app.get('/api/test/zip', async (req, res) => {
   console.log('test zip');
