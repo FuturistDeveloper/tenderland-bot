@@ -81,9 +81,10 @@ export const getAnalyticsForTenders = async (
       const finalReport = await tenderService.generateFinalReport(tender.regNumber);
 
       if (finalReport) {
-        const halfLength = Math.ceil(finalReport.length / 2);
-        await ctx.reply(finalReport.slice(0, halfLength));
-        await ctx.reply(finalReport.slice(halfLength));
+        const thirdLength = Math.ceil(finalReport.length / 3);
+        await ctx.reply(finalReport.slice(0, thirdLength));
+        await ctx.reply(finalReport.slice(thirdLength, thirdLength * 2));
+        await ctx.reply(finalReport.slice(thirdLength * 2));
       } else {
         await ctx.reply('Не удалось получить ответ от ИИ');
       }
@@ -113,7 +114,7 @@ app.get('/api', (req, res) => {
 app.get('/api/test/gemini', async (req, res) => {
   try {
     const gemini = new GeminiService();
-    const response = await gemini.generateFinalRequest('whats the weather in moscow');
+    const response = await gemini.generateResponseFromText('whats the weather in moscow');
     return res.send(response);
   } catch (error) {
     console.error('Error in test job:', error);
