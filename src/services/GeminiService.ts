@@ -192,7 +192,7 @@ export class GeminiService {
   public async generateFinalRequest(text: string): Promise<string | null> {
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: 'gemini-2.5-pro-preview-05-06',
         contents: [PROMPT.geminiFinalRequest + '\n\n' + text],
       });
 
