@@ -41,9 +41,10 @@ export const getAnalyticsForTenders = async (
 
     if (tender.isProcessed && tender.finalReport) {
       console.log('[getAnalyticsForTenders] Тендер уже был обработан');
-      const halfLength = Math.ceil(tender.finalReport.length / 2);
-      await ctx.reply(tender.finalReport.slice(0, halfLength));
-      await ctx.reply(tender.finalReport.slice(halfLength));
+      const thirdLength = Math.ceil(tender.finalReport.length / 3);
+      await ctx.reply(tender.finalReport.slice(0, thirdLength));
+      await ctx.reply(tender.finalReport.slice(thirdLength, thirdLength * 2));
+      await ctx.reply(tender.finalReport.slice(thirdLength * 2));
       return 'Тендер уже был обработан';
     }
 
