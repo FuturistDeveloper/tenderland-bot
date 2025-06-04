@@ -41,10 +41,27 @@ export const getAnalyticsForTenders = async (
 
     if (tender.isProcessed && tender.finalReport) {
       console.log('[getAnalyticsForTenders] Тендер уже был обработан');
-      const thirdLength = Math.ceil(tender.finalReport.length / 3);
-      await ctx.reply(tender.finalReport.slice(0, thirdLength));
-      await ctx.reply(tender.finalReport.slice(thirdLength, thirdLength * 2));
-      await ctx.reply(tender.finalReport.slice(thirdLength * 2));
+      // const thirdLength = Math.ceil(tender.finalReport.length / 3);
+      const maxLength = 4096; // Telegram message length limit
+      const chunks = [];
+      let currentChunk = '';
+
+      const words = tender.finalReport.split(' ');
+      for (const word of words) {
+        if ((currentChunk + word).length >= maxLength) {
+          chunks.push(currentChunk);
+          currentChunk = word + ' ';
+        } else {
+          currentChunk += word + ' ';
+        }
+      }
+      if (currentChunk) {
+        chunks.push(currentChunk);
+      }
+
+      for (const chunk of chunks) {
+        await ctx.reply(chunk);
+      }
       return 'Тендер уже был обработан';
     }
 
