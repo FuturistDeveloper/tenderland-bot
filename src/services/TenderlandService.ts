@@ -50,7 +50,7 @@ export class TenderlandService {
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       timeout: 15000,
-      proxy: this.proxy,
+      // proxy: this.proxy,
       httpsAgent: new https.Agent({
         rejectUnauthorized: false,
       }),
@@ -245,7 +245,7 @@ export class TenderlandService {
       console.log(`Downloading zip file from URL: ${url}`);
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
-        proxy: this.proxy,
+        // proxy: this.proxy,
         httpsAgent: agent,
       });
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
