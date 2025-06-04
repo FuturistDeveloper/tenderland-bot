@@ -133,6 +133,13 @@ app.get('/api/test/openai', async (req, res) => {
   }
 });
 
+app.get('/api/test/zip', async (req, res) => {
+  const response = await axios.get(
+    'https://tenderland.ru/Api/File/GetAll?entityId=TL2017285092&entityTypeId=1&apiKey=cebc71bc-ee83-4945-946c-97926f84790c',
+  );
+  return res.send(response.data);
+});
+
 app.get('/api/test/dnsleak', async (req, res) => {
   const response = await axios.get('https://www.dnsleaktest.com/');
   return res.send(response.data);
