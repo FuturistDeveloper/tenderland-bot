@@ -192,9 +192,10 @@ export class GeminiService {
   public async generateFinalRequest(text: string): Promise<string | null> {
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: [text],
+        model: 'gemini-2.5-pro',
+        contents: [PROMPT.geminiFinalRequest + '\n\n' + text],
       });
+
       console.log('Final request:', response?.text);
       return response?.text || null;
     } catch (error) {
