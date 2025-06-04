@@ -20,6 +20,8 @@ import xlsx from 'xlsx';
 import https from 'https';
 import { BotService } from './BotService';
 import { User } from '../models/User';
+import { GeminiService } from './GeminiService';
+import { PROMPT } from '../constants/prompt';
 
 export class TenderlandService {
   private readonly baseUrl: string;
@@ -35,9 +37,11 @@ export class TenderlandService {
   };
   private readonly config: Config;
   private readonly bot: BotService;
+  private readonly geminiService: GeminiService;
 
   constructor(config: Config) {
     this.config = config;
+    this.geminiService = new GeminiService();
     this.bot = new BotService();
     this.baseUrl = 'https://tenderland.ru/api/v1';
     this.apiKey = ENV.TENDERLAND_API_KEY;
@@ -133,75 +137,109 @@ export class TenderlandService {
   }
 
   async getNewTenders() {
-    const lastTender = await Tender.find({}).sort({ 'tender.ordinalNumber': -1 }).limit(1);
-    // .select('tender.ordinalNumber');
+    console.log('[getNewTenders] Getting new tenders');
 
-    console.log('FIRST', lastTender[0]?.tender.ordinalNumber);
+    // const lastTender = await Tender.findOne({})
+    //   .sort({ 'tender.ordinalNumber': -1 })
+    //   .limit(1)
+    //   .select('tender.ordinalNumber');
 
-    if (lastTender[0]) {
-      console.log('SECOND', lastTender[0].tender.ordinalNumber);
-    }
-    // console.log('[getNewTenders] Last tender', lastTender);
+    // if (lastTender) {
+    //   const { ordinalNumber } = lastTender.tender;
+    //   const task = await this.createTaskForGettingTenders();
 
-    // console.log('[getNewTenders] Getting new tenders');
-    // const task = await this.createTaskForGettingTenders();
-
-    // if (!task) {
-    //   console.error('[getNewTenders] Error getting task');
-    //   return;
-    // }
-
-    // const tenders = await this.getTendersByTaskId(task.Id);
-
-    // if (!tenders) {
-    //   console.error('[getNewTenders] There are no new tenders');
-    //   return;
-    // }
-
-    // const newTenders = tenders?.items.filter(async (tender) => {
-    //   const tenderData = tender.tender;
-    //   const oldTender = await Tender.exists({ regNumber: tenderData.regNumber });
-    //   if (!oldTender) {
-    //     console.log('New tender found', tenderData.regNumber);
-
-    //     await Tender.create({
-    //       regNumber: tenderData.regNumber,
-    //       tender: {
-    //         ordinalNumber: tender.ordinalNumber,
-    //         name: tenderData.name,
-    //         beginPrice: tenderData.beginPrice,
-    //         publishDate: tenderData.publishDate,
-    //         endDate: tenderData.endDate,
-    //         region: tenderData.region,
-    //         typeName: tenderData.typeName,
-    //         lotCategories: tenderData.lotCategories,
-    //         files: tenderData.files,
-    //         module: tenderData.module,
-    //         etpLink: tenderData.etpLink,
-    //         customers: tenderData.customers,
-    //       },
-    //       isProcessed: false,
-    //     });
-
-    //     return true;
+    //   if (!task) {
+    //     console.error('[getNewTenders] Error getting task');
+    //     return;
     //   }
-    //   return false;
-    // });
+    // } else {
+    //   console.log('No tender found');
+    // }
 
-    // newTenders.forEach(async (tender) => {
-    //   await User.find({
-    //     telegramId: 1692802419, // TODO: Remove after
-    //   })
-    //     .cursor()
-    //     .eachAsync(async (user) => {
-    //       await this.bot.sendMessage(
-    //         user.telegramId,
-    //         `Новый тендер найден: ${tender.tender.name} ${tender.tender.regNumber}`,
-    //       );
-    //     });
-    // });
+    const task = await this.createTaskForGettingTenders();
 
-    // console.log(newTenders?.length, tenders?.items.length);
+    if (!task) {
+      console.error('[getNewTenders] Error getting task');
+      return;
+    }
+
+    const tenders = await this.getTendersByTaskId(task.Id);
+
+    if (!tenders) {
+      console.error('[getNewTenders] There are no new tenders');
+      return;
+    }
+
+    // Create an array of promises for checking each tender
+    const tenderChecks = tenders.items.map(async (tender) => {
+      const tenderData = tender.tender;
+      const oldTender = await Tender.exists({ regNumber: tenderData.regNumber });
+      if (oldTender) {
+        return null;
+      } else {
+        console.log('New tender found', tenderData.regNumber);
+
+        await Tender.create({
+          regNumber: tenderData.regNumber,
+          tender: {
+            ordinalNumber: tender.ordinalNumber,
+            name: tenderData.name,
+            beginPrice: tenderData.beginPrice,
+            publishDate: tenderData.publishDate,
+            endDate: tenderData.endDate,
+            region: tenderData.region,
+            typeName: tenderData.typeName,
+            lotCategories: tenderData.lotCategories,
+            files: tenderData.files,
+            module: tenderData.module,
+            etpLink: tenderData.etpLink,
+            customers: tenderData.customers,
+          },
+          isProcessed: false,
+        });
+
+        return tender;
+      }
+    });
+
+    const newTenders = (await Promise.all(tenderChecks)).filter(
+      (tender): tender is NonNullable<typeof tender> => tender !== null,
+    );
+
+    console.log('newTenders', newTenders.length, 'total tenders:', tenders.items.length);
+
+    for (const tender of newTenders) {
+      const unpackedFiles = await this.downloadZipFileAndUnpack(
+        tender.tender.regNumber,
+        tender.tender.files,
+        'извещен',
+      );
+
+      if (!unpackedFiles) {
+        console.error('[getNewTenders] Не удалось скачать или распаковать файлы');
+        return;
+      }
+
+      console.log('unpackedFiles', unpackedFiles.files);
+
+      const response = await this.geminiService.generateResponse(
+        unpackedFiles.files[0],
+        PROMPT.noticeOfPurchase,
+      );
+
+      await this.cleanupExtractedFiles(unpackedFiles.parentFolder);
+
+      await User.find({
+        telegramId: 1692802419, // TODO: Remove after
+      })
+        .cursor()
+        .eachAsync(async (user) => {
+          await this.bot.sendMessage(
+            user.telegramId,
+            `Новый тендер найден: ${tender.tender.name} ${response}`,
+          );
+        });
+    }
   }
 
   async getTender(regNumber: string): Promise<null | {
@@ -283,13 +321,17 @@ export class TenderlandService {
   //     // await this.cleanupExtractedFiles(filePaths.map((filePath) => filePath.paths));
   //   }
 
-  async createTaskForGettingTenders(): Promise<CreateTaskResponse | undefined> {
+  async createTaskForGettingTenders(
+    batchSize: number = this.config.tenderland.batchSize,
+    limit: number = this.config.tenderland.limit,
+    autosearchId: number = this.config.tenderland.autosearchId,
+  ): Promise<CreateTaskResponse | undefined> {
     try {
       console.log(
-        `Creating task for getting tenders with autosearchId=${this.config.tenderland.autosearchId} and limit=${this.config.tenderland.limit} and batchSize=${this.config.tenderland.batchSize}`,
+        `Creating task for getting tenders with autosearchId=${autosearchId} and limit=${limit} and batchSize=${batchSize}`,
       );
       const response = await this.axiosInstance.get(
-        `/Export/Create?autosearchId=${this.config.tenderland.autosearchId}&limit=${this.config.tenderland.limit}&batchSize=${this.config.tenderland.batchSize}&format=json`,
+        `/Export/Create?autosearchId=${autosearchId}&limit=${limit}&batchSize=${batchSize}&format=json`,
       );
       console.log('Task created successfully');
       return CreateTaskResponseSchema.parse(response.data);
@@ -312,6 +354,7 @@ export class TenderlandService {
   async downloadZipFileAndUnpack(
     folderName: string,
     url: string,
+    fileNameFilter?: string,
   ): Promise<{ files: string[]; parentFolder: string } | null> {
     try {
       const agent = new https.Agent({
@@ -367,6 +410,16 @@ export class TenderlandService {
       for (const entry of zip.getEntries()) {
         if (!entry.isDirectory) {
           const originalFileName = path.basename(entry.entryName);
+          // Skip files that don't match the filter if one is provided
+          if (
+            fileNameFilter &&
+            !originalFileName.toLowerCase().includes(fileNameFilter.toLowerCase())
+          ) {
+            console.log(
+              `Skipping file ${originalFileName} as it doesn't match the filter: ${fileNameFilter}`,
+            );
+            continue;
+          }
           const originalFilePath = path.join(originalPath, originalFileName);
 
           // Extract file synchronously
@@ -391,6 +444,16 @@ export class TenderlandService {
           for (const entry of nestedZipContent.getEntries()) {
             if (!entry.isDirectory) {
               const originalFileName = path.basename(entry.entryName);
+              // Skip files that don't match the filter if one is provided
+              if (
+                fileNameFilter &&
+                !originalFileName.toLowerCase().includes(fileNameFilter.toLowerCase())
+              ) {
+                console.log(
+                  `Skipping nested file ${originalFileName} as it doesn't match the filter: ${fileNameFilter}`,
+                );
+                continue;
+              }
               const originalFilePath = path.join(originalPath, originalFileName);
 
               const content = entry.getData();
@@ -424,6 +487,15 @@ export class TenderlandService {
       const convertedFiles: string[] = [];
       for (const file of extractedFiles) {
         const ext = path.extname(file).toLowerCase();
+        const fileName = path.basename(file);
+
+        // Skip files that don't match the filter if one is provided
+        if (fileNameFilter && !fileName.toLowerCase().includes(fileNameFilter.toLowerCase())) {
+          console.log(
+            `Skipping file ${fileName} as it doesn't match the filter: ${fileNameFilter}`,
+          );
+          continue;
+        }
 
         // Only process supported file types
         if (['.doc', '.docx', '.xls', '.xlsx'].includes(ext)) {
@@ -481,6 +553,16 @@ export class TenderlandService {
             for (const entry of zipContent.getEntries()) {
               if (!entry.isDirectory) {
                 const fileName = path.basename(entry.entryName);
+                // Skip files that don't match the filter if one is provided
+                if (
+                  fileNameFilter &&
+                  !fileName.toLowerCase().includes(fileNameFilter.toLowerCase())
+                ) {
+                  console.log(
+                    `Skipping nested file ${fileName} as it doesn't match the filter: ${fileNameFilter}`,
+                  );
+                  continue;
+                }
                 const tempPath = path.join(originalPath, `temp_${fileName}`);
 
                 // Extract file synchronously to temp location first
