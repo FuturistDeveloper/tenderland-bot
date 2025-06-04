@@ -9,7 +9,6 @@ import { Context } from 'telegraf';
 import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
-import { OpenAIService } from './services/OpenAIService';
 
 dotenv.config();
 
@@ -122,16 +121,16 @@ app.get('/api/test/gemini', async (req, res) => {
   }
 });
 
-app.get('/api/test/openai', async (req, res) => {
-  try {
-    const openai = new OpenAIService();
-    const response = await openai.generateTest('whats the weather in moscow');
-    return res.send(response);
-  } catch (error) {
-    console.error('Error in test job:', error);
-    return res.status(500).send('Произошла ошибка при тестировании');
-  }
-});
+// app.get('/api/test/openai', async (req, res) => {
+//   try {
+//     const openai = new OpenAIService();
+//     const response = await openai.generateTest('whats the weather in moscow');
+//     return res.send(response);
+//   } catch (error) {
+//     console.error('Error in test job:', error);
+//     return res.status(500).send('Произошла ошибка при тестировании');
+//   }
+// });
 
 app.get('/api/test/dnsleak', async (req, res) => {
   const response = await axios.get('https://www.dnsleaktest.com/');
