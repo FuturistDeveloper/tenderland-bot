@@ -10,6 +10,7 @@ import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
 import { OpenAIService } from './services/OpenAIService';
+import cron from 'node-cron';
 
 dotenv.config();
 
@@ -98,6 +99,12 @@ export const getAnalyticsForTenders = async (
     return `Произошла ошибка при анализе тендера: ${regNumber}`;
   }
 };
+
+// TODO: Set */15 * * * * for testing
+cron.schedule('* * * * *', async () => {
+  console.log('Getting new tenders');
+  await tenderlandService.getNewTenders();
+});
 
 app.listen(ENV.PORT, () => {
   console.log(`Server is running on port ${ENV.PORT} in ${config.environment} environment`);

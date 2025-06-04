@@ -18,6 +18,10 @@ import puppeteer from 'puppeteer';
 import textract from 'textract';
 import xlsx from 'xlsx';
 import https from 'https';
+import { BotService } from './BotService';
+import { User } from '../models/User';
+import { GeminiService } from './GeminiService';
+import { PROMPT } from '../constants/prompt';
 
 export class TenderlandService {
   private readonly baseUrl: string;
@@ -32,9 +36,13 @@ export class TenderlandService {
     };
   };
   private readonly config: Config;
+  private readonly bot: BotService;
+  private readonly geminiService: GeminiService;
 
   constructor(config: Config) {
     this.config = config;
+    this.geminiService = new GeminiService();
+    this.bot = new BotService();
     this.baseUrl = 'https://tenderland.ru/api/v1';
     this.apiKey = ENV.TENDERLAND_API_KEY;
     this.proxy = {
@@ -104,8 +112,6 @@ export class TenderlandService {
                 customers: tenderData.customers,
               },
               isProcessed: false,
-              analytics: null,
-              reports: null,
             },
           },
           {
@@ -131,18 +137,126 @@ export class TenderlandService {
   }
 
   async getNewTenders() {
-    const tenders = await this.getTenders();
-    const newTenders = tenders?.items.filter(async (tender) => {
+    console.log('[getNewTenders] Getting new tenders');
+
+    // const lastTender = await Tender.findOne({})
+    //   .sort({ 'tender.ordinalNumber': -1 })
+    //   .limit(1)
+    //   .select('tender.ordinalNumber');
+
+    // if (lastTender) {
+    //   const { ordinalNumber } = lastTender.tender;
+    //   const task = await this.createTaskForGettingTenders();
+
+    //   if (!task) {
+    //     console.error('[getNewTenders] Error getting task');
+    //     return;
+    //   }
+    // } else {
+    //   console.log('No tender found');
+    // }
+
+    const task = await this.createTaskForGettingTenders();
+
+    if (!task) {
+      console.error('[getNewTenders] Error getting task');
+      return;
+    }
+
+    const tenders = await this.getTendersByTaskId(task.Id);
+
+    if (!tenders) {
+      console.error('[getNewTenders] There are no new tenders');
+      return;
+    }
+
+    // Create an array of promises for checking each tender
+    const tenderChecks = tenders.items.map(async (tender) => {
       const tenderData = tender.tender;
       const oldTender = await Tender.exists({ regNumber: tenderData.regNumber });
-      if (!oldTender) {
+      if (oldTender) {
+        return null;
+      } else {
         console.log('New tender found', tenderData.regNumber);
-        return true;
+
+        await Tender.create({
+          regNumber: tenderData.regNumber,
+          tender: {
+            ordinalNumber: tender.ordinalNumber,
+            name: tenderData.name,
+            beginPrice: tenderData.beginPrice,
+            publishDate: tenderData.publishDate,
+            endDate: tenderData.endDate,
+            region: tenderData.region,
+            typeName: tenderData.typeName,
+            lotCategories: tenderData.lotCategories,
+            files: tenderData.files,
+            module: tenderData.module,
+            etpLink: tenderData.etpLink,
+            customers: tenderData.customers,
+          },
+          isProcessed: false,
+        });
+
+        return tender;
       }
-      return false;
     });
 
-    console.log(newTenders, newTenders?.length, tenders?.items.length);
+    const newTenders = (await Promise.all(tenderChecks)).filter(
+      (tender): tender is NonNullable<typeof tender> => tender !== null,
+    );
+
+    console.log('newTenders', newTenders.length, 'total tenders:', tenders.items.length);
+
+    for (const tender of newTenders) {
+      const unpackedFiles = await this.downloadZipFileAndUnpack(
+        tender.tender.regNumber,
+        tender.tender.files,
+        'извещен',
+      );
+
+      if (!unpackedFiles) {
+        console.error('[getNewTenders] Не удалось скачать или распаковать файлы');
+        return;
+      }
+
+      console.log('unpackedFiles', unpackedFiles.files);
+
+      const response = await this.geminiService.generateResponse(
+        unpackedFiles.files[0],
+        PROMPT.noticeOfPurchase,
+      );
+
+      const maxLength = 4096; // Telegram message length limit
+      const chunks: string[] = [];
+      let currentChunk = '';
+
+      const words = response?.split(' ') || [];
+      for (const word of words) {
+        if ((currentChunk + word).length >= maxLength) {
+          chunks.push(currentChunk);
+          currentChunk = word + ' ';
+        } else {
+          currentChunk += word + ' ';
+        }
+      }
+      if (currentChunk) {
+        chunks.push(currentChunk);
+      }
+
+      await this.cleanupExtractedFiles(unpackedFiles.parentFolder);
+
+      await User.find({
+        telegramId: 1692802419, // TODO: Remove after
+      })
+        .cursor()
+        .eachAsync(async (user) => {
+          await this.bot.sendMessage(user.telegramId, `Новый тендер найден: ${tender.tender.name}`);
+          for (const chunk of chunks) {
+            await this.bot.sendMessage(user.telegramId, chunk);
+          }
+        });
+    }
   }
 
   async getTender(regNumber: string): Promise<null | {
@@ -224,13 +338,17 @@ export class TenderlandService {
   //     // await this.cleanupExtractedFiles(filePaths.map((filePath) => filePath.paths));
   //   }
 
-  async createTaskForGettingTenders(): Promise<CreateTaskResponse | undefined> {
+  async createTaskForGettingTenders(
+    batchSize: number = this.config.tenderland.batchSize,
+    limit: number = this.config.tenderland.limit,
+    autosearchId: number = this.config.tenderland.autosearchId,
+  ): Promise<CreateTaskResponse | undefined> {
     try {
       console.log(
-        `Creating task for getting tenders with autosearchId=${this.config.tenderland.autosearchId} and limit=${this.config.tenderland.limit} and batchSize=${this.config.tenderland.batchSize}`,
+        `Creating task for getting tenders with autosearchId=${autosearchId} and limit=${limit} and batchSize=${batchSize}`,
       );
       const response = await this.axiosInstance.get(
-        `/Export/Create?autosearchId=${this.config.tenderland.autosearchId}&limit=${this.config.tenderland.limit}&batchSize=${this.config.tenderland.batchSize}&format=json`,
+        `/Export/Create?autosearchId=${autosearchId}&limit=${limit}&batchSize=${batchSize}&format=json`,
       );
       console.log('Task created successfully');
       return CreateTaskResponseSchema.parse(response.data);
@@ -242,6 +360,7 @@ export class TenderlandService {
   async getTendersByTaskId(taskId: number): Promise<TendersResponse | undefined> {
     try {
       const response = await this.axiosInstance.get(`/Export/Get?exportId=${taskId}`);
+      console.log('Getting tenders by task id with url:', response.request.res.responseUrl);
       const data = TendersResponseSchema.parse(response.data);
       return data;
     } catch (error) {
@@ -252,6 +371,7 @@ export class TenderlandService {
   async downloadZipFileAndUnpack(
     folderName: string,
     url: string,
+    fileNameFilter?: string,
   ): Promise<{ files: string[]; parentFolder: string } | null> {
     try {
       const agent = new https.Agent({
@@ -307,6 +427,16 @@ export class TenderlandService {
       for (const entry of zip.getEntries()) {
         if (!entry.isDirectory) {
           const originalFileName = path.basename(entry.entryName);
+          // Skip files that don't match the filter if one is provided
+          if (
+            fileNameFilter &&
+            !originalFileName.toLowerCase().includes(fileNameFilter.toLowerCase())
+          ) {
+            console.log(
+              `Skipping file ${originalFileName} as it doesn't match the filter: ${fileNameFilter}`,
+            );
+            continue;
+          }
           const originalFilePath = path.join(originalPath, originalFileName);
 
           // Extract file synchronously
@@ -331,6 +461,16 @@ export class TenderlandService {
           for (const entry of nestedZipContent.getEntries()) {
             if (!entry.isDirectory) {
               const originalFileName = path.basename(entry.entryName);
+              // Skip files that don't match the filter if one is provided
+              if (
+                fileNameFilter &&
+                !originalFileName.toLowerCase().includes(fileNameFilter.toLowerCase())
+              ) {
+                console.log(
+                  `Skipping nested file ${originalFileName} as it doesn't match the filter: ${fileNameFilter}`,
+                );
+                continue;
+              }
               const originalFilePath = path.join(originalPath, originalFileName);
 
               const content = entry.getData();
@@ -364,6 +504,15 @@ export class TenderlandService {
       const convertedFiles: string[] = [];
       for (const file of extractedFiles) {
         const ext = path.extname(file).toLowerCase();
+        const fileName = path.basename(file);
+
+        // Skip files that don't match the filter if one is provided
+        if (fileNameFilter && !fileName.toLowerCase().includes(fileNameFilter.toLowerCase())) {
+          console.log(
+            `Skipping file ${fileName} as it doesn't match the filter: ${fileNameFilter}`,
+          );
+          continue;
+        }
 
         // Only process supported file types
         if (['.doc', '.docx', '.xls', '.xlsx'].includes(ext)) {
@@ -421,6 +570,16 @@ export class TenderlandService {
             for (const entry of zipContent.getEntries()) {
               if (!entry.isDirectory) {
                 const fileName = path.basename(entry.entryName);
+                // Skip files that don't match the filter if one is provided
+                if (
+                  fileNameFilter &&
+                  !fileName.toLowerCase().includes(fileNameFilter.toLowerCase())
+                ) {
+                  console.log(
+                    `Skipping nested file ${fileName} as it doesn't match the filter: ${fileNameFilter}`,
+                  );
+                  continue;
+                }
                 const tempPath = path.join(originalPath, `temp_${fileName}`);
 
                 // Extract file synchronously to temp location first
