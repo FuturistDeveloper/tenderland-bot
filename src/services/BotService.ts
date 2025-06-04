@@ -76,6 +76,13 @@ export class BotService {
       process.exit(1);
     }
   }
+  public async sendMessage(chatId: number, message: string): Promise<void> {
+    try {
+      await this.bot.telegram.sendMessage(chatId, message);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+  }
 
   public async stop(signal: string): Promise<void> {
     await this.bot.stop(signal);
