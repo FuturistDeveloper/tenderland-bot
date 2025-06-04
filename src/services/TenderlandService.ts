@@ -50,7 +50,7 @@ export class TenderlandService {
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       timeout: 15000,
-      // proxy: this.proxy,
+      proxy: this.proxy,
       httpsAgent: new https.Agent({
         rejectUnauthorized: false,
       }),
@@ -128,6 +128,21 @@ export class TenderlandService {
       console.error('Tender not found');
       return;
     }
+  }
+
+  async getNewTenders() {
+    const tenders = await this.getTenders();
+    const newTenders = tenders?.items.filter(async (tender) => {
+      const tenderData = tender.tender;
+      const oldTender = await Tender.exists({ regNumber: tenderData.regNumber });
+      if (!oldTender) {
+        console.log('New tender found', tenderData.regNumber);
+        return true;
+      }
+      return false;
+    });
+
+    console.log(newTenders, newTenders?.length, tenders?.items.length);
   }
 
   async getTender(regNumber: string): Promise<null | {
@@ -239,17 +254,20 @@ export class TenderlandService {
     url: string,
   ): Promise<{ files: string[]; parentFolder: string } | null> {
     try {
-      // const agent = new https.Agent({
-      //   rejectUnauthorized: false,
-      // });
+      const agent = new https.Agent({
+        rejectUnauthorized: false,
+      });
       console.log(`Downloading zip file from URL: ${url}`);
-      const response = await fetch(url);
-      const data = await response.arrayBuffer();
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        proxy: this.proxy,
+        httpsAgent: agent,
+      });
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
 
       console.log(`Writing zip file to: ${zipFilePath}`);
       // Write zip file
-      await fs.promises.writeFile(zipFilePath, Buffer.from(data));
+      await fs.promises.writeFile(zipFilePath, response.data);
 
       console.log('Unpacking zip file');
       // Unpack zip file
