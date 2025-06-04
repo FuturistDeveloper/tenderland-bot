@@ -1,5 +1,4 @@
 import { z } from 'zod';
-// import { logConfig } from '../utils/logger';
 
 export const configSchema = z.object({
   environment: z.enum(['development', 'production', 'local']),
@@ -27,8 +26,8 @@ const developmentConfig: Config = {
   cronSchedule: '*/15 8-20 * * *',
   tenderland: {
     autosearchId: 249612, // Replace with your development autosearch ID
-    batchSize: 100,
-    limit: 1000,
+    batchSize: 10000,
+    limit: 10000,
     orderBy: 'desc',
   },
   claude: {
@@ -46,8 +45,8 @@ const productionConfig: Config = {
   cronSchedule: '*/15 8-20 * * *',
   tenderland: {
     autosearchId: 249612, // Replace with your production autosearch ID
-    batchSize: 100,
-    limit: 1000,
+    batchSize: 10000,
+    limit: 10000,
     orderBy: 'desc',
   },
   claude: {
@@ -65,8 +64,8 @@ const localConfig: Config = {
   cronSchedule: '*/1 * * * *', // Run every minute in test
   tenderland: {
     autosearchId: 249612, // Replace with your test autosearch ID
-    batchSize: 100,
-    limit: 100,
+    batchSize: 10000,
+    limit: 10000,
     orderBy: 'asc',
   },
   claude: {

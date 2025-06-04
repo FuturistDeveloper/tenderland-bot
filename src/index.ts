@@ -9,6 +9,7 @@ import { Context } from 'telegraf';
 import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
+import cron from 'node-cron';
 
 dotenv.config();
 
@@ -26,10 +27,7 @@ connectDB();
 
 botService.start();
 
-export const getAnalyticsForTenders = async (
-  regNumber: string, // 32514850391
-  ctx: Context,
-): Promise<string> => {
+export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): Promise<string> => {
   try {
     // 0 STEP: Найти тендер в базе данных
     const tender = await tenderlandService.getTender(regNumber);
@@ -136,6 +134,11 @@ export const getAnalyticsForTenders = async (
   }
 };
 
+cron.schedule('*/15 * * * *', async () => {
+  console.log('Getting new tenders');
+  await tenderlandService.getNewTenders();
+});
+
 app.listen(ENV.PORT, () => {
   console.log(`Server is running on port ${ENV.PORT} in ${config.environment} environment`);
 });
@@ -159,16 +162,18 @@ app.get('/api/test/gemini', async (req, res) => {
   }
 });
 
-// app.get('/api/test/openai', async (req, res) => {
-//   try {
-//     const openai = new OpenAIService();
-//     const response = await openai.generateTest('whats the weather in moscow');
-//     return res.send(response);
-//   } catch (error) {
-//     console.error('Error in test job:', error);
-//     return res.status(500).send('Произошла ошибка при тестировании');
-//   }
-// });
+app.get('/api/test/zip', async (req, res) => {
+  console.log('test zip');
+  const response = await fetch(
+    'https://tenderland.ru/Api/File/GetAll?entityId=TL2017285092&entityTypeId=1&apiKey=cebc71bc-ee83-4945-946c-97926f84790c',
+    {
+      method: 'GET',
+    },
+  );
+  const data = await response.arrayBuffer();
+  console.log(data);
+  return res.send(data);
+});
 
 app.get('/api/test/dnsleak', async (req, res) => {
   const response = await axios.get('https://www.dnsleaktest.com/');
