@@ -27,10 +27,7 @@ connectDB();
 
 botService.start();
 
-export const getAnalyticsForTenders = async (
-  regNumber: string, // 32514850391
-  ctx: Context,
-): Promise<string> => {
+export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): Promise<string> => {
   try {
     // 0 STEP: Найти тендер в базе данных
     const tender = await tenderlandService.getTender(regNumber);
@@ -137,8 +134,7 @@ export const getAnalyticsForTenders = async (
   }
 };
 
-// TODO: Set */15 * * * * for testing
-cron.schedule('* * * * *', async () => {
+cron.schedule('*/15 * * * *', async () => {
   console.log('Getting new tenders');
   await tenderlandService.getNewTenders();
 });
@@ -165,17 +161,6 @@ app.get('/api/test/gemini', async (req, res) => {
     return res.status(500).send('Произошла ошибка при тестировании');
   }
 });
-
-// app.get('/api/test/openai', async (req, res) => {
-//   try {
-//     const openai = new OpenAIService();
-//     const response = await openai.generateTest('whats the weather in moscow');
-//     return res.send(response);
-//   } catch (error) {
-//     console.error('Error in test job:', error);
-//     return res.status(500).send('Произошла ошибка при тестировании');
-//   }
-// });
 
 app.get('/api/test/zip', async (req, res) => {
   console.log('test zip');

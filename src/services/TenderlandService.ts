@@ -246,9 +246,7 @@ export class TenderlandService {
 
       await this.cleanupExtractedFiles(unpackedFiles.parentFolder);
 
-      await User.find({
-        telegramId: 1692802419, // TODO: Remove after
-      })
+      await User.find({})
         .cursor()
         .eachAsync(async (user) => {
           await this.bot.sendMessage(user.telegramId, `Новый тендер найден: ${tender.tender.name}`);

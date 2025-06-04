@@ -115,7 +115,7 @@ export class GeminiService {
 
       // Add the file to the contents.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const content: any = [prompt]; // TODO: fix type
+      const content: any = [prompt];
 
       if (file.uri && file.mimeType) {
         const fileContent = createPartFromUri(file.uri, file.mimeType);
