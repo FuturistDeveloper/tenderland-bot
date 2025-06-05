@@ -249,9 +249,13 @@ export class TenderlandService {
         .cursor()
         .eachAsync(async (user) => {
           await this.bot.sendMessage(user.telegramId, `Новый тендер найден: ${tender.tender.name}`);
-          for (const chunk of chunks) {
-            await this.bot.sendMessage(user.telegramId, chunk);
-          }
+          chunks.forEach(async (chunk, index) => {
+            if (index === chunks.length - 1) {
+              await this.bot.sendMessageToAdmin(user.telegramId, chunk, tender.tender.regNumber);
+            } else {
+              await this.bot.sendMessage(user.telegramId, chunk);
+            }
+          });
         });
     }
   }

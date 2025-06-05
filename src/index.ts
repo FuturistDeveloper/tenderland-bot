@@ -97,7 +97,6 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
       const finalReport = await tenderService.generateFinalReport(tender.regNumber);
 
       if (finalReport) {
-        console.log('[getAnalyticsForTenders] Тендер уже был обработан');
         // const thirdLength = Math.ceil(tender.finalReport.length / 3);
         const maxLength = 4096; // Telegram message length limit
         const chunks = [];
@@ -119,12 +118,11 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
         for (const chunk of chunks) {
           await ctx.reply(chunk);
         }
-        return 'Тендер уже был обработан';
+        return 'Анализ тендера завершен';
       } else {
         await ctx.reply('Не удалось получить ответ от ИИ');
+        return 'Не удалось получить ответ от ИИ';
       }
-
-      return 'Анализ тендера завершен';
     } else {
       return 'Не удалось проанализировать товары';
     }
@@ -134,7 +132,7 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
   }
 };
 
-cron.schedule('* * * * *', async () => {
+cron.schedule(config.cronSchedule, async () => {
   console.log('Getting new tenders');
   await tenderlandService.getNewTenders();
 });

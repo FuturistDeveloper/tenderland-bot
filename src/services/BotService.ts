@@ -1,4 +1,4 @@
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 import { ENV, getAnalyticsForTenders } from '../index';
 import { User } from '../models/User';
 import { measureExecutionTime } from '../utils/timing';
@@ -58,6 +58,16 @@ export class BotService {
       );
       ctx.reply(result);
     });
+
+    // Add callback query handler for the tender button
+    this.bot.action(/^tender (.+)$/, async (ctx) => {
+      const regNumber = ctx.match[1];
+      const result = await measureExecutionTime(
+        () => getAnalyticsForTenders(regNumber, ctx),
+        `Analyzing tender ${regNumber}`,
+      );
+      ctx.reply(result);
+    });
   }
 
   private setupErrorHandling(): void {
@@ -76,9 +86,26 @@ export class BotService {
       process.exit(1);
     }
   }
+
   public async sendMessage(chatId: number, message: string): Promise<void> {
     try {
       await this.bot.telegram.sendMessage(chatId, message);
+    } catch (err) {
+      console.error('Failed to send message:', err);
+    }
+  }
+
+  public async sendMessageToAdmin(
+    chatId: number,
+    message: string,
+    tenderId: string,
+  ): Promise<void> {
+    try {
+      await this.bot.telegram.sendMessage(
+        chatId,
+        message,
+        Markup.inlineKeyboard([Markup.button.callback('Проанализировать', `tender ${tenderId}`)]),
+      );
     } catch (err) {
       console.error('Failed to send message:', err);
     }
