@@ -61,23 +61,6 @@ export class GeminiService {
   private readonly ai: GoogleGenAI;
 
   constructor() {
-    // const agent = tunnel.httpsOverHttp({
-    //   proxy: {
-    //     host: 'proxy.toolip.io',
-    //     port: 31113,
-    //     proxyAuth:
-    //       '8c5906b99fbd1c0bcd0f916d545c565ab1708e0be0f1496baf997f51b30a755f33f856d7d162eb0468f21a595aed6361a78de16df55e62667af44347edfe74b2b091ead69511bdde611e51d3ec97887f:imsp9d74sdxw',
-    //   },
-    // });
-
-    // // @ts-expect-error - proxy configuration
-    // globalThis.fetch = (url: string, options: any) => {
-    //   return fetch(url, {
-    //     ...options,
-    //     agent,
-    //   });
-    // };
-
     this.ai = new GoogleGenAI({
       apiKey: ENV.GEMINI_API_KEY,
     });
@@ -123,11 +106,9 @@ export class GeminiService {
       }
 
       const response = await this.ai.models.generateContent({
-        model: 'gemini-1.5-pro',
+        model: 'gemini-2.5-pro-preview-05-06',
         contents: content,
       });
-
-      // console.log(response.text);
 
       return response.text || 'NOTHING RESPONSE';
     } catch (error) {
@@ -145,7 +126,7 @@ export class GeminiService {
   public async generateResponseFromText(text: string): Promise<TenderResponse | null> {
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-pro-preview-05-06', // Ы
+        model: 'gemini-2.5-pro-preview-05-06',
         contents: [PROMPT.geminiAnalysis + '\n\n' + text],
       });
       if (!response.text) return null;
@@ -168,24 +149,6 @@ export class GeminiService {
     } catch (error) {
       console.error('Error generating response to Yandex:', error);
       return 'NOTHING RESPONSE';
-    }
-  }
-
-  public async getActualContentFromTheWebsite(text: string): Promise<string | null> {
-    try {
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: [text],
-        config: {
-          temperature: 0.1,
-          topP: 0.95,
-          topK: 40,
-        },
-      });
-      return response.text || null;
-    } catch (error) {
-      console.error('Error generating response:', error);
-      return null;
     }
   }
 
