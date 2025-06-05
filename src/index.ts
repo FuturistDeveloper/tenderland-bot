@@ -29,6 +29,7 @@ connectDB();
 botService.start();
 
 logConfig(config);
+console.log('Current time: ', new Date().toLocaleString());
 
 export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): Promise<string> => {
   try {
