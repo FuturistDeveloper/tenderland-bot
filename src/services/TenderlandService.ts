@@ -340,16 +340,15 @@ export class TenderlandService {
   //   }
 
   async createTaskForGettingTenders(
-    batchSize: number = this.config.tenderland.batchSize,
     limit: number = this.config.tenderland.limit,
     autosearchId: number = this.config.tenderland.autosearchId,
   ): Promise<CreateTaskResponse | undefined> {
     try {
       console.log(
-        `Creating task for getting tenders with autosearchId=${autosearchId} and limit=${limit} and batchSize=${batchSize}`,
+        `Creating task for getting tenders with autosearchId=${autosearchId} and limit=${limit}`,
       );
       const response = await this.axiosInstance.get(
-        `/Export/Create?autosearchId=${autosearchId}&limit=${limit}&batchSize=${batchSize}&format=json`,
+        `/Export/Create?autosearchId=${autosearchId}&limit=${limit}&format=json`,
       );
       console.log('Task created successfully');
       return CreateTaskResponseSchema.parse(response.data);
