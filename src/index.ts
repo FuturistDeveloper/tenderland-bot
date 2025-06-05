@@ -132,7 +132,7 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
   }
 };
 
-cron.schedule(config.cronSchedule, async () => {
+cron.schedule('* 8-20 * * *', async () => {
   console.log('Getting new tenders');
   await tenderlandService.getNewTenders();
 });
