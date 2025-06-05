@@ -36,9 +36,7 @@ Cron Schedule: ${chalk.cyan(config.cronSchedule)}
 
 ${chalk.bold('Tenderland Settings:')}
   • Autosearch ID: ${chalk.cyan(config.tenderland.autosearchId)}
-  • Batch Size: ${chalk.cyan(config.tenderland.batchSize)}
   • Limit: ${chalk.cyan(config.tenderland.limit)}
-  • Order By: ${chalk.cyan(config.tenderland.orderBy)}
 `;
 
   logBox('Configuration', configContent);
