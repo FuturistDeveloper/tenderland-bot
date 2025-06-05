@@ -37,7 +37,7 @@ const productionConfig: Config = {
 
 const localConfig: Config = {
   environment: 'local',
-  cronSchedule: '*/1 * * * *', // Run every minute in test
+  cronSchedule: '* * * * *', // Run every minute in test
   tenderland: {
     autosearchId: 249612, // Replace with your test autosearch ID
     batchSize: 100,
