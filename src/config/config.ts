@@ -26,7 +26,7 @@ const developmentConfig: Config = {
 
 const productionConfig: Config = {
   environment: 'production',
-  cronSchedule: '*/15 8-20 * * *',
+  cronSchedule: '*/15 1-13 * * *',
   tenderland: {
     autosearchId: 249612, // Replace with your production autosearch ID
     batchSize: 100,
