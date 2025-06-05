@@ -17,7 +17,6 @@ import { handleApiError } from '../utils/error-handler';
 import puppeteer from 'puppeteer';
 import textract from 'textract';
 import xlsx from 'xlsx';
-import https from 'https';
 import { BotService } from './BotService';
 import { User } from '../models/User';
 import { GeminiService } from './GeminiService';
@@ -58,10 +57,10 @@ export class TenderlandService {
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       timeout: 15000,
-      proxy: this.proxy,
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: false,
-      }),
+      // proxy: this.proxy,
+      // httpsAgent: new https.Agent({
+      //   rejectUnauthorized: false,
+      // }),
     });
 
     this.axiosInstance.interceptors.request.use((config) => {
@@ -351,6 +350,7 @@ export class TenderlandService {
       console.log('Task created successfully');
       return CreateTaskResponseSchema.parse(response.data);
     } catch (error) {
+      console.log(error);
       handleApiError(error, 'createTaskForGettingTenders');
     }
   }
@@ -372,14 +372,14 @@ export class TenderlandService {
     fileNameFilter?: string,
   ): Promise<{ files: string[]; parentFolder: string } | null> {
     try {
-      const agent = new https.Agent({
-        rejectUnauthorized: false,
-      });
+      // const agent = new https.Agent({
+      //   rejectUnauthorized: false,
+      // });
       console.log(`Downloading zip file from URL: ${url}`);
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
-        proxy: this.proxy,
-        httpsAgent: agent,
+        // proxy: this.proxy,
+        // httpsAgent: agent,
       });
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
 
