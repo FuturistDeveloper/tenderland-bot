@@ -5,7 +5,6 @@ export const configSchema = z.object({
   cronSchedule: z.string(),
   tenderland: z.object({
     autosearchId: z.number(),
-    batchSize: z.number(),
     limit: z.number(),
     orderBy: z.enum(['asc', 'desc']).default('desc'),
   }),
@@ -18,7 +17,6 @@ const developmentConfig: Config = {
   cronSchedule: '*/15 8-20 * * *',
   tenderland: {
     autosearchId: 249612, // Replace with your development autosearch ID
-    batchSize: 100,
     limit: 100,
     orderBy: 'desc',
   },
@@ -29,7 +27,6 @@ const productionConfig: Config = {
   cronSchedule: '*/15 1-13 * * *',
   tenderland: {
     autosearchId: 249612, // Replace with your production autosearch ID
-    batchSize: 100,
     limit: 100,
     orderBy: 'desc',
   },
@@ -40,7 +37,6 @@ const localConfig: Config = {
   cronSchedule: '* * * * *', // Run every minute in test
   tenderland: {
     autosearchId: 249612, // Replace with your test autosearch ID
-    batchSize: 100,
     limit: 100,
     orderBy: 'asc',
   },
