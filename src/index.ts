@@ -10,6 +10,7 @@ import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
 import cron from 'node-cron';
+import { logConfig } from './utils/logger';
 
 dotenv.config();
 
@@ -26,6 +27,8 @@ const botService = new BotService();
 connectDB();
 
 botService.start();
+
+logConfig(config);
 
 export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): Promise<string> => {
   try {
