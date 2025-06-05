@@ -9,14 +9,6 @@ export const configSchema = z.object({
     limit: z.number(),
     orderBy: z.enum(['asc', 'desc']).default('desc'),
   }),
-  claude: z.object({
-    model: z.string(),
-    maxTokens: z.number(),
-  }),
-  gemini: z.object({
-    model: z.string(),
-    maxTokens: z.number(),
-  }),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -26,17 +18,9 @@ const developmentConfig: Config = {
   cronSchedule: '*/15 8-20 * * *',
   tenderland: {
     autosearchId: 249612, // Replace with your development autosearch ID
-    batchSize: 10000,
-    limit: 10000,
+    batchSize: 100,
+    limit: 100,
     orderBy: 'desc',
-  },
-  claude: {
-    model: 'claude-3-7-sonnet-20250219',
-    maxTokens: 20000,
-  },
-  gemini: {
-    model: 'gemini-pro',
-    maxTokens: 20000,
   },
 };
 
@@ -45,17 +29,9 @@ const productionConfig: Config = {
   cronSchedule: '*/15 8-20 * * *',
   tenderland: {
     autosearchId: 249612, // Replace with your production autosearch ID
-    batchSize: 10000,
-    limit: 10000,
+    batchSize: 100,
+    limit: 100,
     orderBy: 'desc',
-  },
-  claude: {
-    model: 'claude-3-7-sonnet-20250219',
-    maxTokens: 20000,
-  },
-  gemini: {
-    model: 'gemini-pro',
-    maxTokens: 20000,
   },
 };
 
@@ -64,17 +40,9 @@ const localConfig: Config = {
   cronSchedule: '*/1 * * * *', // Run every minute in test
   tenderland: {
     autosearchId: 249612, // Replace with your test autosearch ID
-    batchSize: 10000,
-    limit: 10000,
+    batchSize: 100,
+    limit: 100,
     orderBy: 'asc',
-  },
-  claude: {
-    model: 'claude-3-7-sonnet-20250219',
-    maxTokens: 20000,
-  },
-  gemini: {
-    model: 'gemini-pro',
-    maxTokens: 20000,
   },
 };
 
