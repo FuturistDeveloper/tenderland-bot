@@ -78,6 +78,19 @@ export class GoogleSearchService {
         return null;
       }
 
+      // Parse HTML and clean it
+      const dom = new JSDOM(response.data);
+      const document = dom.window.document;
+
+      // Remove script and style elements
+      const scripts = document.getElementsByTagName('script');
+      const styles = document.getElementsByTagName('style');
+      Array.from(scripts).forEach((script: Element) => script.remove());
+      Array.from(styles).forEach((style: Element) => style.remove());
+
+      // Get only the body content
+      const bodyContent = document.body.innerHTML;
+
       // Create html directory if it doesn't exist
       const htmlDir = path.join(process.cwd(), 'html');
       if (!fs.existsSync(htmlDir)) {
@@ -87,10 +100,10 @@ export class GoogleSearchService {
       // Ensure the output path is in the html directory
       const fullOutputPath = path.join(htmlDir, path.basename(outputPath));
 
-      // Write the file
-      fs.writeFileSync(fullOutputPath, response.data);
+      // Write the cleaned HTML
+      fs.writeFileSync(fullOutputPath, bodyContent);
 
-      console.log('Successfully downloaded HTML to ' + fullOutputPath);
+      console.log('Successfully downloaded and cleaned HTML to ' + fullOutputPath);
       return fullOutputPath;
     } catch (error) {
       console.error('Failed to download HTML from ' + url);
