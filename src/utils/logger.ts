@@ -39,14 +39,6 @@ ${chalk.bold('Tenderland Settings:')}
   • Batch Size: ${chalk.cyan(config.tenderland.batchSize)}
   • Limit: ${chalk.cyan(config.tenderland.limit)}
   • Order By: ${chalk.cyan(config.tenderland.orderBy)}
-
-${chalk.bold('Claude Settings:')}
-  • Model: ${chalk.cyan(config.claude.model)}
-  • Max Tokens: ${chalk.cyan(config.claude.maxTokens)}
-
-${chalk.bold('Gemini Settings:')}
-  • Model: ${chalk.cyan(config.gemini.model)}
-  • Max Tokens: ${chalk.cyan(config.gemini.maxTokens)}
 `;
 
   logBox('Configuration', configContent);
