@@ -111,7 +111,7 @@ export class GoogleSearchService {
     }
   }
 
-  async search(query: string, numResults: number = 3): Promise<GoogleSearchResult[]> {
+  async search(query: string, numResults: number = 10): Promise<GoogleSearchResult[]> {
     try {
       const response = await axios.get(this.baseUrl, {
         params: {
