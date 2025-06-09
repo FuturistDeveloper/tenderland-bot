@@ -10,6 +10,7 @@ import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
 import cron from 'node-cron';
+import { logConfig } from './utils/logger';
 
 dotenv.config();
 
@@ -26,6 +27,9 @@ const botService = new BotService();
 connectDB();
 
 botService.start();
+
+logConfig(config);
+console.log('Current time: ', new Date().toLocaleString());
 
 export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): Promise<string> => {
   try {
@@ -71,6 +75,17 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
       tender.files,
     );
 
+    // const unpackedFiles = {
+    //   files: [
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/Печатная форма извещения 39714788.html',
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 2 ���᭮����� ����.pdf',
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 3 �ॡ������ � ���.pdf',
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 1  ���ᠭ�� ��쥪� ���㯪� 2.pdf',
+    //   ],
+    //   parentFolder:
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309',
+    // };
+
     if (!unpackedFiles) {
       console.error('[getAnalyticsForTenders] Не удалось скачать или распаковать файлы');
       return 'Не удалось скачать или распаковать файлы';
@@ -79,18 +94,21 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
     console.log('unpackedFiles', unpackedFiles);
 
     // 2 STEP: Анализ тендера с помощью Gemini Pro
-    const claudeResponse = await tenderService.analyzeTender(tender.regNumber, unpackedFiles.files);
+    const responseFromFiles = await tenderService.analyzeTender(
+      tender.regNumber,
+      unpackedFiles.files,
+    );
 
     // // 3 STEP: Удалить распакованные файлы
-    await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
+    // await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
 
-    if (!claudeResponse) {
+    if (!responseFromFiles) {
       console.error('[getAnalyticsForTenders] Не удалось получить ответ Gemini');
       return 'Не удалось получить ответ от ИИ';
     }
 
     // 4 STEP: Анализ товаров
-    const isAnalyzed = await tenderService.analyzeItems(tender.regNumber, claudeResponse);
+    const isAnalyzed = await tenderService.analyzeItems(tender.regNumber, responseFromFiles);
 
     if (isAnalyzed) {
       // 5 STEP: Генерация отчета
@@ -132,6 +150,7 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
   }
 };
 
+// TODO: Uncomment this when we have a real cron schedule
 cron.schedule(config.cronSchedule, async () => {
   console.log('Getting new tenders');
   await tenderlandService.getNewTenders();
@@ -152,7 +171,7 @@ app.get('/api', (req, res) => {
 app.get('/api/test/gemini', async (req, res) => {
   try {
     const gemini = new GeminiService();
-    const response = await gemini.generateResponseFromText('whats the weather in moscow');
+    const response = await gemini.testGemini();
     return res.send(response);
   } catch (error) {
     console.error('Error in test job:', error);

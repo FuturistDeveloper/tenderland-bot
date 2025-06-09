@@ -4,7 +4,7 @@ import { ENV } from '../index';
 export const connectDB = async (): Promise<void> => {
   try {
     const conn = await mongoose.connect(ENV.MONGO_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log('MongoDB Connected: ', conn.connection.host);
   } catch (error) {
     console.error('Error connecting to MongoDB:', error);
     process.exit(1);
@@ -30,4 +30,4 @@ process.on('SIGINT', async () => {
     console.error('Error during MongoDB disconnection:', err);
     process.exit(1);
   }
-}); 
+});

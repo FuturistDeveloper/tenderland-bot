@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { JSDOM } from 'jsdom';
 import * as fs from 'fs';
 import * as path from 'path';
+import pdfParse from 'pdf-parse';
 
 dotenv.config();
 
@@ -62,7 +63,10 @@ export class GoogleSearchService {
     }
   }
 
-  public async downloadHtml(url: string, outputPath: string): Promise<string | null> {
+  public async downloadHtml(
+    url: string,
+    outputPath: string,
+  ): Promise<{ fullOutputPath: string; bodyContent: string } | null> {
     try {
       const response = await axios.get(url, {
         timeout: 5000,
@@ -70,12 +74,49 @@ export class GoogleSearchService {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         },
+        responseType: 'arraybuffer', // Handle both HTML and PDF
       });
 
       // Check if response data is empty
       if (!response.data) {
         console.log('Empty response from ' + url);
         return null;
+      }
+
+      let htmlContent: string;
+      const contentType = response.headers['content-type'] || '';
+
+      // Handle PDF content
+      if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
+        try {
+          const pdfData = await pdfParse(response.data);
+          // Convert PDF text to simple HTML
+          htmlContent = `
+            <html>
+              <body>
+                <div class="pdf-content">
+                  ${pdfData.text.replace(/\n/g, '<br>')}
+                </div>
+              </body>
+            </html>
+          `;
+          console.log('Successfully converted PDF to HTML');
+        } catch (pdfError) {
+          console.error('Failed to parse PDF:', pdfError);
+          return null;
+        }
+      } else {
+        // Handle HTML content
+        const dom = new JSDOM(response.data.toString());
+        const document = dom.window.document;
+
+        // Remove script and style elements
+        const scripts = document.getElementsByTagName('script');
+        const styles = document.getElementsByTagName('style');
+        Array.from(scripts).forEach((script: Element) => script.remove());
+        Array.from(styles).forEach((style: Element) => style.remove());
+
+        htmlContent = document.body.innerHTML;
       }
 
       // Create html directory if it doesn't exist
@@ -87,18 +128,18 @@ export class GoogleSearchService {
       // Ensure the output path is in the html directory
       const fullOutputPath = path.join(htmlDir, path.basename(outputPath));
 
-      // Write the file
-      fs.writeFileSync(fullOutputPath, response.data);
+      // Write the cleaned HTML
+      fs.writeFileSync(fullOutputPath, htmlContent);
 
-      console.log('Successfully downloaded HTML to ' + fullOutputPath);
-      return fullOutputPath;
+      console.log('Successfully downloaded and cleaned HTML to ' + fullOutputPath);
+      return { fullOutputPath, bodyContent: htmlContent };
     } catch (error) {
       console.error('Failed to download HTML from ' + url);
       return null;
     }
   }
 
-  async search(query: string, numResults: number = 3): Promise<GoogleSearchResult[]> {
+  async search(query: string, numResults: number = 10): Promise<GoogleSearchResult[]> {
     try {
       const response = await axios.get(this.baseUrl, {
         params: {
@@ -115,6 +156,8 @@ export class GoogleSearchService {
         link: item.link,
         snippet: item.snippet,
       }));
+
+      console.log(results);
 
       return results;
     } catch (error) {
