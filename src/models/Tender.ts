@@ -39,6 +39,7 @@ export interface ITender extends Document {
         snippet: string;
         link: string;
         content?: string;
+        html?: string | null;
       }[];
     }[];
   }[];
@@ -90,6 +91,7 @@ const TenderSchema = new Schema<ITender>(
                 snippet: { type: String, required: true },
                 link: { type: String, required: true },
                 content: { type: String },
+                html: { type: String || null },
               },
             ],
           },
