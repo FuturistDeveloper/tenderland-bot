@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { JSDOM } from 'jsdom';
 import * as fs from 'fs';
 import * as path from 'path';
+import pdfParse from 'pdf-parse';
 
 dotenv.config();
 
@@ -73,6 +74,7 @@ export class GoogleSearchService {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         },
+        responseType: 'arraybuffer', // Handle both HTML and PDF
       });
 
       // Check if response data is empty
@@ -81,18 +83,41 @@ export class GoogleSearchService {
         return null;
       }
 
-      // Parse HTML and clean it
-      const dom = new JSDOM(response.data);
-      const document = dom.window.document;
+      let htmlContent: string;
+      const contentType = response.headers['content-type'] || '';
 
-      // Remove script and style elements
-      const scripts = document.getElementsByTagName('script');
-      const styles = document.getElementsByTagName('style');
-      Array.from(scripts).forEach((script: Element) => script.remove());
-      Array.from(styles).forEach((style: Element) => style.remove());
+      // Handle PDF content
+      if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
+        try {
+          const pdfData = await pdfParse(response.data);
+          // Convert PDF text to simple HTML
+          htmlContent = `
+            <html>
+              <body>
+                <div class="pdf-content">
+                  ${pdfData.text.replace(/\n/g, '<br>')}
+                </div>
+              </body>
+            </html>
+          `;
+          console.log('Successfully converted PDF to HTML');
+        } catch (pdfError) {
+          console.error('Failed to parse PDF:', pdfError);
+          return null;
+        }
+      } else {
+        // Handle HTML content
+        const dom = new JSDOM(response.data.toString());
+        const document = dom.window.document;
 
-      // Get only the body content
-      const bodyContent = document.body.innerHTML;
+        // Remove script and style elements
+        const scripts = document.getElementsByTagName('script');
+        const styles = document.getElementsByTagName('style');
+        Array.from(scripts).forEach((script: Element) => script.remove());
+        Array.from(styles).forEach((style: Element) => style.remove());
+
+        htmlContent = document.body.innerHTML;
+      }
 
       // Create html directory if it doesn't exist
       const htmlDir = path.join(process.cwd(), 'html');
@@ -104,10 +129,10 @@ export class GoogleSearchService {
       const fullOutputPath = path.join(htmlDir, path.basename(outputPath));
 
       // Write the cleaned HTML
-      fs.writeFileSync(fullOutputPath, bodyContent);
+      fs.writeFileSync(fullOutputPath, htmlContent);
 
       console.log('Successfully downloaded and cleaned HTML to ' + fullOutputPath);
-      return { fullOutputPath, bodyContent };
+      return { fullOutputPath, bodyContent: htmlContent };
     } catch (error) {
       console.error('Failed to download HTML from ' + url);
       return null;
@@ -131,6 +156,8 @@ export class GoogleSearchService {
         link: item.link,
         snippet: item.snippet,
       }));
+
+      console.log(results);
 
       return results;
     } catch (error) {
