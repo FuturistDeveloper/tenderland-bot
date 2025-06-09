@@ -62,7 +62,10 @@ export class GoogleSearchService {
     }
   }
 
-  public async downloadHtml(url: string, outputPath: string): Promise<string | null> {
+  public async downloadHtml(
+    url: string,
+    outputPath: string,
+  ): Promise<{ fullOutputPath: string; bodyContent: string } | null> {
     try {
       const response = await axios.get(url, {
         timeout: 5000,
@@ -104,7 +107,7 @@ export class GoogleSearchService {
       fs.writeFileSync(fullOutputPath, bodyContent);
 
       console.log('Successfully downloaded and cleaned HTML to ' + fullOutputPath);
-      return fullOutputPath;
+      return { fullOutputPath, bodyContent };
     } catch (error) {
       console.error('Failed to download HTML from ' + url);
       return null;
