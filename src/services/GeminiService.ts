@@ -69,6 +69,7 @@ export class GeminiService {
   public async generateResponse(
     filePath: string,
     prompt: string = PROMPT.gemini,
+    link?: string,
   ): Promise<string | null> {
     try {
       const fileName = path.basename(filePath) || '';
@@ -113,7 +114,10 @@ export class GeminiService {
       return response.text || 'NOTHING RESPONSE';
     } catch (error) {
       if (error instanceof Error) {
-        console.error('Error details:', {
+        if (link) {
+          console.error('Failed to generate response from Link:', link);
+        }
+        console.error(`Failed to generate response from file ${filePath} or link: ${link}`, {
           message: error.message,
           name: error.name,
           stack: error.stack,
