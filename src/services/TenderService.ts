@@ -161,31 +161,28 @@ export class TenderAnalyticsService {
           const outputPath = `${randomUID}.html`;
 
           console.log('Downloading HTML for:', link);
-          const path = await this.googleSearch.downloadHtml(link, outputPath);
+          const res = await this.googleSearch.downloadHtml(link, outputPath);
 
-          if (!path) {
+          if (!res) {
             console.error('HTML was not downloaded for:', link);
             return {
               link,
               title: result.title,
               snippet: result.snippet,
               content: null,
+              html: null,
             };
           }
 
           console.log('HTML downloaded for:', link);
 
           const response = await this.geminiService.generateResponse(
-            path,
+            res.fullOutputPath,
             PROMPT.geminiAnalyzeHTML,
+            link,
           );
 
-          // try {
-          //   fs.unlinkSync(path);
-          //   console.log('Successfully deleted downloaded file:', path);
-          // } catch (error) {
-          //   console.error('Error deleting file:', error);
-          // }
+          console.log('Response from url:', link, response?.slice(0, 100));
 
           if (!response) {
             console.error('Failed to generate response to analyze the content from HTML');
@@ -194,6 +191,7 @@ export class TenderAnalyticsService {
               title: result.title,
               snippet: result.snippet,
               content: null,
+              html: res.bodyContent,
             };
           }
           console.log('Analyzing HTML finished for:', link);
@@ -203,6 +201,7 @@ export class TenderAnalyticsService {
             title: result.title,
             snippet: result.snippet,
             content: response,
+            html: res.bodyContent,
           };
         });
 
