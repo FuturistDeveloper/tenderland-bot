@@ -1,9 +1,8 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import dotenv from 'dotenv';
 import { JSDOM } from 'jsdom';
 import * as fs from 'fs';
 import * as path from 'path';
-import pdfParse from 'pdf-parse';
 
 dotenv.config();
 
@@ -53,12 +52,9 @@ export class GoogleSearchService {
         .replace(/\n+/g, '\n') // Replace multiple newlines with single newline
         .trim(); // Remove leading/trailing whitespace
 
-      console.log('Fetched and parsed content from ' + url);
-
       return text;
     } catch (error) {
-      console.error('Could not fetch and parse content from ' + url);
-      // console.error(`Error fetching content from ${url}:`, error);
+      console.error(`Error fetching content from ${url}:`, error);
       return '';
     }
   }
@@ -79,45 +75,21 @@ export class GoogleSearchService {
 
       // Check if response data is empty
       if (!response.data) {
-        console.log('Empty response from ' + url);
+        console.error('Empty response from ' + url);
         return null;
       }
 
-      let htmlContent: string;
-      const contentType = response.headers['content-type'] || '';
+      // Handle HTML content
+      const dom = new JSDOM(response.data.toString());
+      const document = dom.window.document;
 
-      // Handle PDF content
-      if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
-        try {
-          const pdfData = await pdfParse(response.data);
-          // Convert PDF text to simple HTML
-          htmlContent = `
-            <html>
-              <body>
-                <div class="pdf-content">
-                  ${pdfData.text.replace(/\n/g, '<br>')}
-                </div>
-              </body>
-            </html>
-          `;
-          console.log('Successfully converted PDF to HTML');
-        } catch (pdfError) {
-          console.error('Failed to parse PDF:', pdfError);
-          return null;
-        }
-      } else {
-        // Handle HTML content
-        const dom = new JSDOM(response.data.toString());
-        const document = dom.window.document;
+      // Remove script and style elements
+      const scripts = document.getElementsByTagName('script');
+      const styles = document.getElementsByTagName('style');
+      Array.from(scripts).forEach((script: Element) => script.remove());
+      Array.from(styles).forEach((style: Element) => style.remove());
 
-        // Remove script and style elements
-        const scripts = document.getElementsByTagName('script');
-        const styles = document.getElementsByTagName('style');
-        Array.from(scripts).forEach((script: Element) => script.remove());
-        Array.from(styles).forEach((style: Element) => style.remove());
-
-        htmlContent = document.body.innerHTML;
-      }
+      const htmlContent = document.body.innerHTML;
 
       // Create html directory if it doesn't exist
       const htmlDir = path.join(process.cwd(), 'html');
@@ -130,8 +102,6 @@ export class GoogleSearchService {
 
       // Write the cleaned HTML
       fs.writeFileSync(fullOutputPath, htmlContent);
-
-      console.log('Successfully downloaded and cleaned HTML to ' + fullOutputPath);
       return { fullOutputPath, bodyContent: htmlContent };
     } catch (error) {
       console.error('Failed to download HTML from ' + url);
@@ -151,15 +121,33 @@ export class GoogleSearchService {
       });
 
       const items = response.data.items || [];
-      const results = items.map((item: { title: string; link: string; snippet: string }) => ({
-        title: item.title,
-        link: item.link,
-        snippet: item.snippet,
-      }));
+      const filteredItems = items.filter((item: { link: string }) => {
+        return item.link.includes('.ru') || item.link.includes('.рф');
+      });
+
+      const results = filteredItems.map(
+        (item: { title: string; link: string; snippet: string }) => ({
+          title: item.title,
+          link: item.link,
+          snippet: item.snippet,
+        }),
+      );
+
+      console.log(
+        'Google search results:',
+        results.length,
+        results.map((item: { link: string }) => item.link),
+      );
 
       return results;
     } catch (error) {
-      console.error('Error performing Google search:', error);
+      if (error instanceof AxiosError) {
+        console.error('Error performing Google search:', error.message);
+      } else if (error instanceof Error) {
+        console.error('Error performing Google search:', error.message);
+      } else {
+        console.error('Error performing Google search:', error);
+      }
       return [];
     }
   }
