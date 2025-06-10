@@ -49,7 +49,7 @@ export class TenderAnalyticsService {
   }
 
   public async analyzeItems(regNumber: string, tender: TenderResponse) {
-    const itemPromises = tender.items.map(async (item, i: number) => {
+    const itemPromises = tender.items.slice(0, 1).map(async (item, i: number) => {
       const { name, specifications } = item;
       const specificationsText = Object.entries(specifications);
       const specificationsTextString = specificationsText
@@ -61,17 +61,21 @@ export class TenderAnalyticsService {
       `;
 
       console.log('Analyzing item:', name);
-      const itemResponse = await this.geminiService.generateFindRequest(itemText);
+      // const itemResponse = await this.geminiService.generateFindRequest(itemText);
 
-      if (!itemResponse) {
-        console.error('No item response found for:', name);
-        return;
-      }
+      // if (!itemResponse) {
+      //   console.error('No item response found for:', name);
+      //   return;
+      // }
 
       console.log('Item Responded', name);
 
-      const findRequest = itemResponse?.split('\n');
-      console.log('Find request:', findRequest);
+      // const findRequest = itemResponse?.split('\n');
+      const findRequest = [
+        'выжигатель по дереву дуговой регулировка температуры',
+        'прибор для выжигания дуговой для ткани 25 Вт',
+        'купить выжигатель дуговой для дерева и ткани',
+      ];
 
       await Tender.findOneAndUpdate(
         { regNumber },
@@ -86,23 +90,61 @@ export class TenderAnalyticsService {
       );
 
       const searchPromises = findRequest.map(async (request) => {
-        const results = (await this.googleSearch.search(request)).filter(
-          (result) => !result.link.endsWith('.pdf'),
-        );
+        console.log('Starting search for:', request);
+        const results = await this.googleSearch.search(request);
+        const websitePromises = results
+          .filter((result) => !result.link.endsWith('.pdf'))
+          .map(async (result) => {
+            const { link } = result;
+            try {
+              const randomUID = crypto.randomUUID();
+              const outputPath = `${randomUID}.html`;
 
-        console.log(`Searching finished for: ${request} with results: ${results}`);
+              console.log('Downloading HTML for:', link);
+              const res = await this.googleSearch.downloadHtml(link, outputPath);
 
-        const websitePromises = results.map(async (result) => {
-          const { link } = result;
-          try {
-            const randomUID = crypto.randomUUID();
-            const outputPath = `${randomUID}.html`;
+              if (!res) {
+                // console.error('HTML was not downloaded for:', link);
+                return {
+                  link,
+                  title: result.title,
+                  snippet: result.snippet,
+                  content: '',
+                  html: '',
+                };
+              }
 
-            console.log('Downloading HTML for:', link);
-            const res = await this.googleSearch.downloadHtml(link, outputPath);
+              // console.log('HTML downloaded for:', link);
 
-            if (!res) {
-              console.error('HTML was not downloaded for:', link);
+              const response = await this.geminiService.generateResponse(
+                res.fullOutputPath,
+                PROMPT.geminiAnalyzeHTML,
+                link,
+              );
+
+              // console.log('Getting response from url:', link);
+
+              if (!response) {
+                console.error('Failed to generate response to analyze the content from HTML');
+                return {
+                  link,
+                  title: result.title,
+                  snippet: result.snippet,
+                  content: '',
+                  html: res.bodyContent,
+                };
+              }
+              console.log('Analyzing HTML finished for:', link);
+
+              return {
+                link,
+                title: result.title,
+                snippet: result.snippet,
+                content: response,
+                html: res.bodyContent,
+              };
+            } catch (error) {
+              console.error('Error in [analyzeItems]:', error);
               return {
                 link,
                 title: result.title,
@@ -111,62 +153,17 @@ export class TenderAnalyticsService {
                 html: '',
               };
             }
-
-            console.log('HTML downloaded for:', link);
-
-            const response = await this.geminiService.generateResponse(
-              res.fullOutputPath,
-              PROMPT.geminiAnalyzeHTML,
-              link,
-            );
-
-            console.log('Getting response from url:', link);
-
-            if (!response) {
-              console.error('Failed to generate response to analyze the content from HTML');
-              return {
-                link,
-                title: result.title,
-                snippet: result.snippet,
-                content: '',
-                html: res.bodyContent,
-              };
-            }
-            console.log('Analyzing HTML finished for:', link);
-
-            return {
-              link,
-              title: result.title,
-              snippet: result.snippet,
-              content: response,
-              html: res.bodyContent,
-            };
-          } catch (error) {
-            console.error('Error in [analyzeItems]:', error);
-            return {
-              link,
-              title: result.title,
-              snippet: result.snippet,
-              content: '',
-              html: '',
-            };
-          }
-        });
+          });
 
         const responses = await Promise.all(websitePromises);
+        // console.log('Responses:', responses);
         await Tender.findOneAndUpdate(
           { regNumber },
           {
-            $set: {
-              [`findRequests.${i}`]: {
-                itemName: name,
-                findRequest,
-                parsedRequest: [
-                  {
-                    requestName: request,
-                    responseFromWebsites: responses,
-                  },
-                ],
+            $push: {
+              [`findRequests.${i}.parsedRequest`]: {
+                requestName: request,
+                responseFromWebsites: responses,
               },
             },
           },
@@ -175,15 +172,30 @@ export class TenderAnalyticsService {
         return responses;
       });
 
-      const siteAnalysis = await Promise.all(searchPromises);
+      // Wait for all requests to complete
+      const searchResults = await Promise.all(searchPromises);
+
+      // console.log('Search results:', searchResults);
 
       const promptToAnalyze = getProductAnalysisPrompt(
-        siteAnalysis.flat().filter((site) => site.content !== ''),
+        searchResults.flat().filter((site) => site.content !== ''),
         item,
       );
 
+      // Save prompt to analyze to text file
+      const promptDir = path.join(process.cwd(), 'prompts');
+      if (!fs.existsSync(promptDir)) {
+        fs.mkdirSync(promptDir);
+      }
+      fs.writeFileSync(
+        path.join(promptDir, `prompt_${regNumber}_${item.name}.txt`),
+        PROMPT.geminiAnalyzeHTML + '\n' + promptToAnalyze,
+        'utf8',
+      );
+
+      console.log('Analyzing product:', name);
+
       const productAnalysis = await this.geminiService.analyzeProduct(promptToAnalyze);
-      console.log('Product analysis:', productAnalysis);
       await Tender.findOneAndUpdate(
         { regNumber },
         { $set: { [`findRequests.${i}.productAnalysis`]: productAnalysis } },
