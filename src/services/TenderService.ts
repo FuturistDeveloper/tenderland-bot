@@ -86,12 +86,11 @@ export class TenderAnalyticsService {
       );
 
       const searchPromises = findRequest.map(async (request) => {
-        console.log('Searching for:', request);
         const results = (await this.googleSearch.search(request)).filter(
           (result) => !result.link.endsWith('.pdf'),
         );
 
-        console.log(`Searching finished for: ${request}`);
+        console.log(`Searching finished for: ${request} with results: ${results}`);
 
         const websitePromises = results.map(async (result) => {
           const { link } = result;
@@ -184,7 +183,7 @@ export class TenderAnalyticsService {
       );
 
       const productAnalysis = await this.geminiService.analyzeProduct(promptToAnalyze);
-
+      console.log('Product analysis:', productAnalysis);
       await Tender.findOneAndUpdate(
         { regNumber },
         { $set: { [`findRequests.${i}.productAnalysis`]: productAnalysis } },
