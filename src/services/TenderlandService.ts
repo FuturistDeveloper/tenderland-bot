@@ -289,7 +289,7 @@ export class TenderlandService {
         files: newTender.files,
       };
     } else {
-      console.log('Старый тендер найден в БД', oldTender);
+      console.log('Старый тендер найден в БД');
       return {
         isProcessed: oldTender.isProcessed,
         finalReport: oldTender.finalReport,
