@@ -157,8 +157,6 @@ export class GoogleSearchService {
         snippet: item.snippet,
       }));
 
-      console.log(results);
-
       return results;
     } catch (error) {
       console.error('Error performing Google search:', error);
