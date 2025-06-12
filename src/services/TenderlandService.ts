@@ -13,7 +13,6 @@ import {
   TendersResponseSchema,
   TenderType,
 } from '../schemas/tenderland.schema';
-import { handleApiError } from '../utils/error-handler';
 import puppeteer from 'puppeteer';
 import textract from 'textract';
 import xlsx from 'xlsx';
@@ -290,7 +289,7 @@ export class TenderlandService {
         files: newTender.files,
       };
     } else {
-      console.log('Старый тендер найден в БД', oldTender);
+      console.log('Старый тендер найден в БД');
       return {
         isProcessed: oldTender.isProcessed,
         finalReport: oldTender.finalReport,
@@ -317,28 +316,6 @@ export class TenderlandService {
     }
   }
 
-  //   async processTender(filePaths: IFilePath[]): Promise<void> {
-  //     for (const filePath of filePaths) {
-  //       // console.log('Waiting 10 minutes');
-  //       console.log('Processing', filePath.regNumber);
-  //       const response = await claudeService.generateResponse(filePath.paths);
-  //       console.log(response);
-  //       const tender = await Tender.findOne({ regNumber: filePath.regNumber });
-  //       if (!tender) {
-  //         console.error('Tender not found', filePath.regNumber);
-  //         return;
-  //       }
-  //       tender.claudeResponse = response;
-  //       tender.isProcessed = true;
-
-  //       await tender.save();
-
-  //       await delay(60 * 1000);
-  //     }
-
-  //     // await this.cleanupExtractedFiles(filePaths.map((filePath) => filePath.paths));
-  //   }
-
   async createTaskForGettingTenders(
     limit: number = this.config.tenderland.limit,
     autosearchId: number = this.config.tenderland.autosearchId,
@@ -354,7 +331,7 @@ export class TenderlandService {
       return CreateTaskResponseSchema.parse(response.data);
     } catch (error) {
       console.log(error);
-      handleApiError(error, 'createTaskForGettingTenders');
+      return;
     }
   }
 
@@ -365,7 +342,8 @@ export class TenderlandService {
       const data = TendersResponseSchema.parse(response.data);
       return data;
     } catch (error) {
-      handleApiError(error, 'getTendersByTaskId');
+      console.log(error);
+      return;
     }
   }
 

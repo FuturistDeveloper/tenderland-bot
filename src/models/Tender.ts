@@ -1,11 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { TenderResponse } from '../types/tender';
 
-interface IAnalyzedFile {
-  analyzedFile: string;
-  response: string;
-}
-
 export interface ITender extends Document {
   regNumber: string;
   tender: {
@@ -24,8 +19,7 @@ export interface ITender extends Document {
       lotCustomerShortName: string;
     }>;
   };
-  claudeResponse: TenderResponse | null;
-  analyzedFiles: IAnalyzedFile[];
+  responseFromFiles: TenderResponse | null;
   isProcessed: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +36,7 @@ export interface ITender extends Document {
         html?: string | null;
       }[];
     }[];
+    productAnalysis?: string;
   }[];
   finalReport: string | null;
 }
@@ -68,13 +63,7 @@ const TenderSchema = new Schema<ITender>(
       ],
     },
     isProcessed: { type: Boolean, default: false },
-    analyzedFiles: [
-      {
-        analyzedFile: { type: String, required: true },
-        response: { type: String, required: true },
-      },
-    ],
-    claudeResponse: {
+    responseFromFiles: {
       type: Object,
       default: null,
     },
@@ -96,6 +85,7 @@ const TenderSchema = new Schema<ITender>(
             ],
           },
         ],
+        productAnalysis: { type: String, default: null },
       },
     ],
     finalReport: { type: String, default: null },

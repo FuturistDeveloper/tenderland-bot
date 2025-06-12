@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import dotenv from 'dotenv';
 import { JSDOM } from 'jsdom';
 import * as fs from 'fs';
@@ -52,12 +52,9 @@ export class GoogleSearchService {
         .replace(/\n+/g, '\n') // Replace multiple newlines with single newline
         .trim(); // Remove leading/trailing whitespace
 
-      console.log('Fetched and parsed content from ' + url);
-
       return text;
     } catch (error) {
-      console.error('Could not fetch and parse content from ' + url);
-      // console.error(`Error fetching content from ${url}:`, error);
+      console.error(`Error fetching content from ${url}:`, error);
       return '';
     }
   }
@@ -73,16 +70,24 @@ export class GoogleSearchService {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         },
+        proxy: {
+          host: '46.8.23.68',
+          port: 1050,
+          auth: {
+            username: 'UYXmCQ',
+            password: 'GwX9zq37KR',
+          },
+        },
       });
 
       // Check if response data is empty
       if (!response.data) {
-        console.log('Empty response from ' + url);
+        console.error('Empty response from ' + url);
         return null;
       }
 
-      // Parse HTML and clean it
-      const dom = new JSDOM(response.data);
+      // Handle HTML content
+      const dom = new JSDOM(response.data.toString());
       const document = dom.window.document;
 
       // Remove script and style elements
@@ -91,8 +96,7 @@ export class GoogleSearchService {
       Array.from(scripts).forEach((script: Element) => script.remove());
       Array.from(styles).forEach((style: Element) => style.remove());
 
-      // Get only the body content
-      const bodyContent = document.body.innerHTML;
+      const htmlContent = document.body.innerHTML;
 
       // Create html directory if it doesn't exist
       const htmlDir = path.join(process.cwd(), 'html');
@@ -104,10 +108,8 @@ export class GoogleSearchService {
       const fullOutputPath = path.join(htmlDir, path.basename(outputPath));
 
       // Write the cleaned HTML
-      fs.writeFileSync(fullOutputPath, bodyContent);
-
-      console.log('Successfully downloaded and cleaned HTML to ' + fullOutputPath);
-      return { fullOutputPath, bodyContent };
+      fs.writeFileSync(fullOutputPath, htmlContent);
+      return { fullOutputPath, bodyContent: htmlContent };
     } catch (error) {
       console.error('Failed to download HTML from ' + url);
       return null;
@@ -126,15 +128,33 @@ export class GoogleSearchService {
       });
 
       const items = response.data.items || [];
-      const results = items.map((item: { title: string; link: string; snippet: string }) => ({
-        title: item.title,
-        link: item.link,
-        snippet: item.snippet,
-      }));
+      const filteredItems = items.filter((item: { link: string }) => {
+        return item.link.includes('.ru') || item.link.includes('.рф');
+      });
+
+      const results = filteredItems.map(
+        (item: { title: string; link: string; snippet: string }) => ({
+          title: item.title,
+          link: item.link,
+          snippet: item.snippet,
+        }),
+      );
+
+      console.log(
+        'Google search results:',
+        results.length,
+        results.map((item: { link: string }) => item.link),
+      );
 
       return results;
     } catch (error) {
-      console.error('Error performing Google search:', error);
+      if (error instanceof AxiosError) {
+        console.error('Error performing Google search:', error.message);
+      } else if (error instanceof Error) {
+        console.error('Error performing Google search:', error.message);
+      } else {
+        console.error('Error performing Google search:', error);
+      }
       return [];
     }
   }

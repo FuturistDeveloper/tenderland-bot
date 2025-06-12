@@ -5,12 +5,11 @@ import { connectDB } from './config/database';
 import { BotService } from './services/BotService';
 import { TenderlandService } from './services/TenderlandService';
 import { validateEnv } from './utils/env';
-import { Context } from 'telegraf';
 import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
+import YandexSearchService from './services/YandexSearchService';
 import cron from 'node-cron';
-import { logConfig } from './utils/logger';
 
 dotenv.config();
 
@@ -23,28 +22,28 @@ app.use(express.json());
 const tenderlandService = new TenderlandService(config);
 const tenderService = new TenderAnalyticsService();
 const botService = new BotService();
+const yandexSearchService = new YandexSearchService();
 
 connectDB();
 
 botService.start();
 
-logConfig(config);
 console.log('Current time: ', new Date().toLocaleString());
 
-export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): Promise<string> => {
+export const getAnalyticsForTenders = async (regNumber: string, userId: number): Promise<void> => {
   try {
     // 0 STEP: Найти тендер в базе данных
     const tender = await tenderlandService.getTender(regNumber);
 
     if (!tender) {
       console.error('[getAnalyticsForTenders] Тендер с таким номером не найден');
-      return 'Тендер с таким номером не найден';
+      botService.sendMessage(userId, 'Тендер с таким номером не найден');
+      return;
     }
 
     if (tender.isProcessed && tender.finalReport) {
       console.log('[getAnalyticsForTenders] Тендер уже был обработан');
-      // const thirdLength = Math.ceil(tender.finalReport.length / 3);
-      const maxLength = 4096; // Telegram message length limit
+      const maxLength = 4096;
       const chunks = [];
       let currentChunk = '';
 
@@ -62,12 +61,13 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
       }
 
       for (const chunk of chunks) {
-        await ctx.reply(chunk);
+        await botService.sendMessage(userId, chunk);
       }
-      return 'Тендер уже был обработан';
+      botService.sendMessage(userId, 'Тендер уже был обработан');
+      return;
     }
 
-    ctx.reply('Тендер успешно найден! Начинаем анализ...');
+    botService.sendMessage(userId, 'Тендер успешно найден! Начинаем анализ...');
 
     // 1 STEP: Скачать и распаковать файлы
     const unpackedFiles = await tenderlandService.downloadZipFileAndUnpack(
@@ -75,26 +75,45 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
       tender.files,
     );
 
+    // const unpackedFiles = {
+    //   files: [
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/Печатная форма извещения 39714788.html',
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 2 ���᭮����� ����.pdf',
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 3 �ॡ������ � ���.pdf',
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 1  ���ᠭ�� ��쥪� ���㯪� 2.pdf',
+    //   ],
+    //   parentFolder:
+    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309',
+    // };
+
     if (!unpackedFiles) {
       console.error('[getAnalyticsForTenders] Не удалось скачать или распаковать файлы');
-      return 'Не удалось скачать или распаковать файлы';
+      botService.sendMessage(userId, 'Не удалось скачать или распаковать файлы');
+      return;
     }
 
     console.log('unpackedFiles', unpackedFiles);
 
     // 2 STEP: Анализ тендера с помощью Gemini Pro
-    const claudeResponse = await tenderService.analyzeTender(tender.regNumber, unpackedFiles.files);
+    const responseFromFiles = await tenderService.analyzeTender(
+      tender.regNumber,
+      unpackedFiles.files,
+    );
+
+    // const resTender = await Tender.findOne({ regNumber });
+    // const responseFromFiles = resTender?.responseFromFiles;
 
     // // 3 STEP: Удалить распакованные файлы
     await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
 
-    if (!claudeResponse) {
+    if (!responseFromFiles) {
       console.error('[getAnalyticsForTenders] Не удалось получить ответ Gemini');
-      return 'Не удалось получить ответ от ИИ';
+      botService.sendMessage(userId, 'Не удалось получить ответ от ИИ');
+      return;
     }
 
     // 4 STEP: Анализ товаров
-    const isAnalyzed = await tenderService.analyzeItems(tender.regNumber, claudeResponse);
+    const isAnalyzed = await tenderService.analyzeItems(tender.regNumber, responseFromFiles);
 
     if (isAnalyzed) {
       // 5 STEP: Генерация отчета
@@ -120,25 +139,28 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
         }
 
         for (const chunk of chunks) {
-          await ctx.reply(chunk);
+          await botService.sendMessage(userId, chunk);
         }
-        return 'Анализ тендера завершен';
+        botService.sendMessage(userId, 'Анализ тендера завершен');
+        return;
       } else {
-        await ctx.reply('Не удалось получить ответ от ИИ');
-        return 'Не удалось получить ответ от ИИ';
+        await botService.sendMessage(userId, 'Не удалось получить ответ от ИИ');
+        return;
       }
     } else {
-      return 'Не удалось проанализировать товары';
+      botService.sendMessage(userId, 'Не удалось проанализировать товары');
+      return;
     }
   } catch (err) {
     console.error('Error in analytics job:', err);
-    return `Произошла ошибка при анализе тендера: ${regNumber}`;
+    botService.sendMessage(userId, `Произошла ошибка при анализе тендера: ${regNumber}`);
+    return;
   }
 };
 
 cron.schedule(config.cronSchedule, async () => {
-  console.log('Getting new tenders');
-  await tenderlandService.getNewTenders();
+  // console.log('Getting new tenders');
+  // await tenderlandService.getNewTenders();
 });
 
 app.listen(ENV.PORT, () => {
@@ -153,10 +175,15 @@ app.get('/api', (req, res) => {
   });
 });
 
+app.get('/api/test/yandex', async (req, res) => {
+  const response = await yandexSearchService.search('кофемашина');
+  return res.send(response);
+});
+
 app.get('/api/test/gemini', async (req, res) => {
   try {
     const gemini = new GeminiService();
-    const response = await gemini.generateResponseFromText('whats the weather in moscow');
+    const response = await gemini.testGemini();
     return res.send(response);
   } catch (error) {
     console.error('Error in test job:', error);

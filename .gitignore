@@ -132,3 +132,8 @@ dist
 .env
 .vercel
 .DS_Store
+tenderland
+prompts
+.DS_Store
+
+html
