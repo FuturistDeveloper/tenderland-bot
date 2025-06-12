@@ -108,8 +108,8 @@ export class TenderAnalyticsService {
                   link,
                   title: site.title,
                   snippet: site.snippet,
-                  content: '',
-                  html: '',
+                  content: 'Empty',
+                  html: 'Empty',
                 };
               }
 
@@ -124,8 +124,8 @@ export class TenderAnalyticsService {
                   link,
                   title: site.title,
                   snippet: site.snippet,
-                  content: '',
-                  html: '',
+                  content: 'Empty',
+                  html: 'Empty',
                 };
               }
 
@@ -134,7 +134,7 @@ export class TenderAnalyticsService {
                 title: site.title,
                 snippet: site.snippet,
                 content: response,
-                html: res.bodyContent,
+                html: 'Fine',
               };
             } catch (error) {
               console.error('Error in [analyzeItems]:', error);
@@ -142,8 +142,8 @@ export class TenderAnalyticsService {
                 link,
                 title: site.title,
                 snippet: site.snippet,
-                content: '',
-                html: '',
+                content: 'Empty',
+                html: 'Empty',
               };
             }
           });
