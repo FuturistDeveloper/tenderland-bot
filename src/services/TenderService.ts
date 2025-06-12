@@ -224,7 +224,7 @@ export class TenderAnalyticsService {
 
       await Tender.findOneAndUpdate({ regNumber }, { isProcessed: true, finalReport: answer });
       const productAnalysis = tender?.findRequests.map((item) => item.productAnalysis);
-      const fullAnswer = tender?.finalReport + '\n\n' + productAnalysis.join('\n\n');
+      const fullAnswer = answer + '\n\n' + productAnalysis.join('\n\n');
       return fullAnswer;
     } catch (err) {
       console.error('[generateFinalReport] Ошибка при генерации отчета:', err);
