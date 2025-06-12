@@ -56,7 +56,11 @@ class YandexSearchService {
       }
     });
 
-    return results.filter((result) => !result.link.includes('yandex.ru'));
+    return results.filter(
+      (result) =>
+        !result.link.includes('yandex.ru') &&
+        (result.link.includes('.ru') || result.link.includes('.рф')),
+    );
   }
 
   public async search(query: string): Promise<SearchResult[]> {
@@ -81,6 +85,19 @@ class YandexSearchService {
             'Content-Type': 'application/json',
             Authorization: `Api-Key ${this.apiKey}`,
           },
+          // proxy: {
+          //   host: '46.8.23.68',
+          //   port: 1050,
+          //   auth: {
+          //     username: 'UYXmCQ',
+          //     password: 'GwX9zq37KR',
+          //   },
+          //   // protocol: 'http',
+          // },
+          // httpsAgent: new https.Agent({
+          //   rejectUnauthorized: false,
+          //   secureProtocol: 'TLSv1_2_method',
+          // }),
           // timeout: 30000,
         },
       );
@@ -97,6 +114,19 @@ class YandexSearchService {
             'Content-Type': 'application/json',
             Authorization: `Api-Key ${this.apiKey}`,
           },
+          // proxy: {
+          //   host: '46.8.23.68',
+          //   port: 1050,
+          //   auth: {
+          //     username: 'UYXmCQ',
+          //     password: 'GwX9zq37KR',
+          //   },
+          // },
+          // httpsAgent: new https.Agent({
+          //   rejectUnauthorized: false,
+          //   secureProtocol: 'TLSv1_2_method',
+          // }),
+          // timeout: 30000,
         },
       );
 
