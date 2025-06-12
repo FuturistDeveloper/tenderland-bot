@@ -25,14 +25,6 @@ export class TenderlandService {
   private readonly baseUrl: string;
   private readonly apiKey: string;
   private readonly axiosInstance: AxiosInstance;
-  private readonly proxy: {
-    host: string;
-    port: number;
-    auth: {
-      username: string;
-      password: string;
-    };
-  };
   private readonly config: Config;
   private readonly bot: BotService;
   private readonly geminiService: GeminiService;
@@ -43,23 +35,10 @@ export class TenderlandService {
     this.bot = new BotService();
     this.baseUrl = 'https://tenderland.ru/api/v1';
     this.apiKey = ENV.TENDERLAND_API_KEY;
-    this.proxy = {
-      host: 'proxy.toolip.io',
-      port: 31113,
-      auth: {
-        username:
-          '8c5906b99fbd1c0bcd0f916d545c565ab1708e0be0f1496baf997f51b30a755f33f856d7d162eb0468f21a595aed6361a78de16df55e62667af44347edfe74b2b091ead69511bdde611e51d3ec97887f',
-        password: 'imsp9d74sdxw',
-      },
-    };
 
     this.axiosInstance = axios.create({
       baseURL: this.baseUrl,
       timeout: 15000,
-      // proxy: this.proxy,
-      // httpsAgent: new https.Agent({
-      //   rejectUnauthorized: false,
-      // }),
     });
 
     this.axiosInstance.interceptors.request.use((config) => {
@@ -353,14 +332,9 @@ export class TenderlandService {
     fileNameFilter?: string,
   ): Promise<{ files: string[]; parentFolder: string } | null> {
     try {
-      // const agent = new https.Agent({
-      //   rejectUnauthorized: false,
-      // });
       console.log(`Downloading zip file from URL: ${url}`);
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
-        // proxy: this.proxy,
-        // httpsAgent: agent,
       });
       const zipFilePath = path.join(process.cwd(), 'tenderland.zip');
 

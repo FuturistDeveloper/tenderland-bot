@@ -70,14 +70,6 @@ export class GoogleSearchService {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         },
-        proxy: {
-          host: '46.8.23.68',
-          port: 1050,
-          auth: {
-            username: 'UYXmCQ',
-            password: 'GwX9zq37KR',
-          },
-        },
       });
 
       // Check if response data is empty
