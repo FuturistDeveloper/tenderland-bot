@@ -245,7 +245,7 @@ export class TenderlandService {
     files: string;
   }> {
     const oldTender = await Tender.findOne({ regNumber }).select(
-      'regNumber tender.files isProcessed finalReport',
+      'regNumber tender.files isProcessed finalReport findRequests',
     );
     if (!oldTender) {
       console.log('Старый тендер не найден в БД', regNumber);
@@ -269,9 +269,13 @@ export class TenderlandService {
       };
     } else {
       console.log('Старый тендер найден в БД');
+
+      const finalReport = oldTender.finalReport;
+      const productAnalysis = oldTender.findRequests.map((item) => item.productAnalysis);
+      const fullAnswer = finalReport + '\n\n' + productAnalysis.join('\n\n');
       return {
         isProcessed: oldTender.isProcessed,
-        finalReport: oldTender.finalReport,
+        finalReport: fullAnswer,
         regNumber: oldTender.regNumber,
         files: oldTender.tender.files,
       };
