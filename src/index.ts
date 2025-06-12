@@ -5,12 +5,11 @@ import { connectDB } from './config/database';
 import { BotService } from './services/BotService';
 import { TenderlandService } from './services/TenderlandService';
 import { validateEnv } from './utils/env';
-import { Context } from 'telegraf';
 import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
+import YandexSearchService from './services/YandexSearchService';
 import cron from 'node-cron';
-import { logConfig } from './utils/logger';
 
 dotenv.config();
 
@@ -23,28 +22,28 @@ app.use(express.json());
 const tenderlandService = new TenderlandService(config);
 const tenderService = new TenderAnalyticsService();
 const botService = new BotService();
+const yandexSearchService = new YandexSearchService();
 
 connectDB();
 
 botService.start();
 
-logConfig(config);
 console.log('Current time: ', new Date().toLocaleString());
 
-export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): Promise<string> => {
+export const getAnalyticsForTenders = async (regNumber: string, userId: number): Promise<void> => {
   try {
     // 0 STEP: Найти тендер в базе данных
     const tender = await tenderlandService.getTender(regNumber);
 
     if (!tender) {
       console.error('[getAnalyticsForTenders] Тендер с таким номером не найден');
-      return 'Тендер с таким номером не найден';
+      botService.sendMessage(userId, 'Тендер с таким номером не найден');
+      return;
     }
 
     if (tender.isProcessed && tender.finalReport) {
       console.log('[getAnalyticsForTenders] Тендер уже был обработан');
-      // const thirdLength = Math.ceil(tender.finalReport.length / 3);
-      const maxLength = 4096; // Telegram message length limit
+      const maxLength = 4096;
       const chunks = [];
       let currentChunk = '';
 
@@ -62,12 +61,13 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
       }
 
       for (const chunk of chunks) {
-        await ctx.reply(chunk);
+        await botService.sendMessage(userId, chunk);
       }
-      return 'Тендер уже был обработан';
+      botService.sendMessage(userId, 'Тендер уже был обработан');
+      return;
     }
 
-    ctx.reply('Тендер успешно найден! Начинаем анализ...');
+    botService.sendMessage(userId, 'Тендер успешно найден! Начинаем анализ...');
 
     // 1 STEP: Скачать и распаковать файлы
     const unpackedFiles = await tenderlandService.downloadZipFileAndUnpack(
@@ -88,7 +88,8 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
 
     if (!unpackedFiles) {
       console.error('[getAnalyticsForTenders] Не удалось скачать или распаковать файлы');
-      return 'Не удалось скачать или распаковать файлы';
+      botService.sendMessage(userId, 'Не удалось скачать или распаковать файлы');
+      return;
     }
 
     console.log('unpackedFiles', unpackedFiles);
@@ -99,12 +100,16 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
       unpackedFiles.files,
     );
 
+    // const resTender = await Tender.findOne({ regNumber });
+    // const responseFromFiles = resTender?.responseFromFiles;
+
     // // 3 STEP: Удалить распакованные файлы
-    // await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
+    await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
 
     if (!responseFromFiles) {
       console.error('[getAnalyticsForTenders] Не удалось получить ответ Gemini');
-      return 'Не удалось получить ответ от ИИ';
+      botService.sendMessage(userId, 'Не удалось получить ответ от ИИ');
+      return;
     }
 
     // 4 STEP: Анализ товаров
@@ -134,26 +139,28 @@ export const getAnalyticsForTenders = async (regNumber: string, ctx: Context): P
         }
 
         for (const chunk of chunks) {
-          await ctx.reply(chunk);
+          await botService.sendMessage(userId, chunk);
         }
-        return 'Анализ тендера завершен';
+        botService.sendMessage(userId, 'Анализ тендера завершен');
+        return;
       } else {
-        await ctx.reply('Не удалось получить ответ от ИИ');
-        return 'Не удалось получить ответ от ИИ';
+        await botService.sendMessage(userId, 'Не удалось получить ответ от ИИ');
+        return;
       }
     } else {
-      return 'Не удалось проанализировать товары';
+      botService.sendMessage(userId, 'Не удалось проанализировать товары');
+      return;
     }
   } catch (err) {
     console.error('Error in analytics job:', err);
-    return `Произошла ошибка при анализе тендера: ${regNumber}`;
+    botService.sendMessage(userId, `Произошла ошибка при анализе тендера: ${regNumber}`);
+    return;
   }
 };
 
-// TODO: Uncomment this when we have a real cron schedule
 cron.schedule(config.cronSchedule, async () => {
-  console.log('Getting new tenders');
-  await tenderlandService.getNewTenders();
+  // console.log('Getting new tenders');
+  // await tenderlandService.getNewTenders();
 });
 
 app.listen(ENV.PORT, () => {
@@ -166,6 +173,11 @@ app.get('/api', (req, res) => {
     message: 'Bot is running',
     environment: config.environment,
   });
+});
+
+app.get('/api/test/yandex', async (req, res) => {
+  const response = await yandexSearchService.search('кофемашина');
+  return res.send(response);
 });
 
 app.get('/api/test/gemini', async (req, res) => {
