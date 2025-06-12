@@ -52,21 +52,19 @@ export class BotService {
         return;
       }
 
-      const result = await measureExecutionTime(
-        () => getAnalyticsForTenders(regNumber, ctx),
+      measureExecutionTime(
+        () => getAnalyticsForTenders(regNumber, ctx.from.id),
         `Analyzing tender ${regNumber}`,
       );
-      ctx.reply(result);
     });
 
     // Add callback query handler for the tender button
     this.bot.action(/^tender (.+)$/, async (ctx) => {
       const regNumber = ctx.match[1];
-      const result = await measureExecutionTime(
-        () => getAnalyticsForTenders(regNumber, ctx),
+      measureExecutionTime(
+        () => getAnalyticsForTenders(regNumber, ctx.from.id),
         `Analyzing tender ${regNumber}`,
       );
-      ctx.reply(result);
     });
   }
 
