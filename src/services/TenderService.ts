@@ -71,15 +71,7 @@ export class TenderAnalyticsService {
           return;
         }
 
-        console.log('Item Responded', name);
-
         const findRequest = itemResponse?.split('\n');
-        // const findRequest = [
-        //   'выжигатель по дереву дуговой регулировка температуры',
-        //   'прибор для выжигания дуговой для ткани 25 Вт',
-        //   'купить выжигатель дуговой для дерева и ткани',
-        // ];
-
         await Tender.findOneAndUpdate(
           { regNumber },
           {
@@ -100,11 +92,10 @@ export class TenderAnalyticsService {
 
           const yandexSites = await this.yandexSearch.search(request);
           const googleSites = await this.googleSearch.search(request);
+          const sites = [...yandexSites, ...googleSites];
 
-          const responses = [];
-          // Process each website sequentially
-          for (const result of [...yandexSites, ...googleSites]) {
-            const { link } = result;
+          const promises = sites.map(async (site) => {
+            const { link } = site;
             try {
               const randomUID = crypto.randomUUID();
               const outputPath = `${randomUID}.html`;
@@ -113,17 +104,15 @@ export class TenderAnalyticsService {
               const res = await this.googleSearch.downloadHtml(link, outputPath);
 
               if (!res) {
-                responses.push({
+                return {
                   link,
-                  title: result.title,
-                  snippet: result.snippet,
+                  title: site.title,
+                  snippet: site.snippet,
                   content: '',
                   html: '',
-                });
-                continue;
+                };
               }
 
-              console.log('Generating response for:', link);
               const response = await this.geminiService.generateResponse(
                 res.fullOutputPath,
                 PROMPT.geminiAnalyzeHTML,
@@ -131,36 +120,35 @@ export class TenderAnalyticsService {
               );
 
               if (!response) {
-                console.error('Failed to generate response to analyze the content from HTML');
-                responses.push({
+                return {
                   link,
-                  title: result.title,
-                  snippet: result.snippet,
+                  title: site.title,
+                  snippet: site.snippet,
                   content: '',
-                  html: res.bodyContent,
-                });
-                continue;
+                  html: '',
+                };
               }
-              console.log('Analyzing HTML finished for:', link);
 
-              responses.push({
+              return {
                 link,
-                title: result.title,
-                snippet: result.snippet,
+                title: site.title,
+                snippet: site.snippet,
                 content: response,
                 html: res.bodyContent,
-              });
+              };
             } catch (error) {
               console.error('Error in [analyzeItems]:', error);
-              responses.push({
+              return {
                 link,
-                title: result.title,
-                snippet: result.snippet,
+                title: site.title,
+                snippet: site.snippet,
                 content: '',
                 html: '',
-              });
+              };
             }
-          }
+          });
+
+          const responses = await Promise.all(promises);
 
           await Tender.findOneAndUpdate(
             { regNumber },
