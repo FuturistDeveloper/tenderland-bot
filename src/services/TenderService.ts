@@ -5,6 +5,7 @@ import { GoogleSearchService } from './GoogleService';
 import { formatTenderData, getProductAnalysisPrompt, PROMPT } from '../constants/prompt';
 import path from 'path';
 import YandexSearchService from './YandexSearchService';
+import filterSites from '../utils/site-validation';
 
 export class TenderAnalyticsService {
   private geminiService: GeminiService;
@@ -92,7 +93,7 @@ export class TenderAnalyticsService {
 
           const yandexSites = await this.yandexSearch.search(request);
           const googleSites = await this.googleSearch.search(request);
-          const sites = [...yandexSites, ...googleSites];
+          const sites = filterSites([...yandexSites, ...googleSites]);
 
           const promises = sites.map(async (site) => {
             const { link } = site;
@@ -108,7 +109,7 @@ export class TenderAnalyticsService {
                   link,
                   title: site.title,
                   snippet: site.snippet,
-                  content: 'Empty',
+                  content: '',
                   html: 'Empty',
                 };
               }
@@ -124,7 +125,7 @@ export class TenderAnalyticsService {
                   link,
                   title: site.title,
                   snippet: site.snippet,
-                  content: 'Empty',
+                  content: '',
                   html: 'Empty',
                 };
               }
@@ -142,7 +143,7 @@ export class TenderAnalyticsService {
                 link,
                 title: site.title,
                 snippet: site.snippet,
-                content: 'Empty',
+                content: '',
                 html: 'Empty',
               };
             }
