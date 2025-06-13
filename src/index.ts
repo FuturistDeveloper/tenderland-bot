@@ -8,8 +8,8 @@ import { validateEnv } from './utils/env';
 import { TenderAnalyticsService } from './services/TenderService';
 import axios from 'axios';
 import { GeminiService } from './services/GeminiService';
-import YandexSearchService from './services/YandexSearchService';
 import cron from 'node-cron';
+import https from 'https';
 
 dotenv.config();
 
@@ -22,7 +22,6 @@ app.use(express.json());
 const tenderlandService = new TenderlandService(config);
 const tenderService = new TenderAnalyticsService();
 const botService = new BotService();
-const yandexSearchService = new YandexSearchService();
 
 connectDB();
 
@@ -175,9 +174,27 @@ app.get('/api', (req, res) => {
   });
 });
 
-app.get('/api/test/yandex', async (req, res) => {
-  const response = await yandexSearchService.search('кофемашина');
-  return res.send(response);
+app.get('/api/test/request', async (req, res) => {
+  try {
+    const response = await axios.get('https://telescope1.ru/catalog/binoculars/veber-sputnik', {
+      proxy: {
+        host: '46.161.45.148',
+        port: 9128,
+        auth: {
+          username: 'of92n7',
+          password: 'V1Bp8E',
+        },
+      },
+      httpAgent: new https.Agent({
+        rejectUnauthorized: false,
+      }),
+    });
+    console.log(response.data);
+    return res.send(response.data);
+  } catch (error) {
+    console.error('Error in test job:', error);
+    return res.status(500).send('Произошла ошибка при тестировании');
+  }
 });
 
 app.get('/api/test/gemini', async (req, res) => {
