@@ -53,7 +53,11 @@ export class TenderAnalyticsService {
 
   public async analyzeItems(regNumber: string, tender: TenderResponse) {
     try {
-      const itemPromises = tender.items.map(async (item, i: number) => {
+      const results = [];
+
+      // Process items sequentially
+      for (let i = 0; i < tender.items.length; i++) {
+        const item = tender.items[i];
         const { name, specifications } = item;
         const specificationsText = Object.entries(specifications);
         const specificationsTextString = specificationsText
@@ -69,7 +73,7 @@ export class TenderAnalyticsService {
 
         if (!itemResponse) {
           console.error('No item response found for:', name);
-          return;
+          continue;
         }
 
         const findRequest = itemResponse?.split('\n');
@@ -188,10 +192,8 @@ export class TenderAnalyticsService {
           },
         );
 
-        return productAnalysis;
-      });
-
-      const results = await Promise.all(itemPromises);
+        results.push(productAnalysis);
+      }
 
       const htmlDir = path.join(process.cwd(), 'html');
       fs.rmSync(htmlDir, { recursive: true, force: true });
