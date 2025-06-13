@@ -120,17 +120,12 @@ export class GoogleSearchService {
       });
 
       const items = response.data.items || [];
-      const filteredItems = items.filter((item: { link: string }) => {
-        return item.link.includes('.ru') || item.link.includes('.рф');
-      });
 
-      const results = filteredItems.map(
-        (item: { title: string; link: string; snippet: string }) => ({
-          title: item.title,
-          link: item.link,
-          snippet: item.snippet,
-        }),
-      );
+      const results = items.map((item: { title: string; link: string; snippet: string }) => ({
+        title: item.title,
+        link: item.link,
+        snippet: item.snippet,
+      }));
 
       console.log(
         'Google search results:',

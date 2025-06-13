@@ -56,11 +56,7 @@ class YandexSearchService {
       }
     });
 
-    return results.filter(
-      (result) =>
-        !result.link.includes('yandex.ru') &&
-        (result.link.includes('.ru') || result.link.includes('.рф')),
-    );
+    return results;
   }
 
   public async search(query: string): Promise<SearchResult[]> {
