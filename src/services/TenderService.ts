@@ -73,20 +73,11 @@ export class TenderAnalyticsService {
         }
 
         const findRequest = itemResponse?.split('\n');
-        await Tender.findOneAndUpdate(
-          { regNumber },
-          {
-            $push: {
-              findRequests: {
-                itemName: name,
-                findRequest,
-              },
-            },
-          },
-        );
 
         // Process each request sequentially
         const searchResults = [];
+        const parsedRequests = [];
+
         for (let index = 0; index < findRequest.length; index++) {
           const request = findRequest[index];
           console.log('Starting search for:', request);
@@ -150,20 +141,12 @@ export class TenderAnalyticsService {
           });
 
           const responses = await Promise.all(promises);
-
-          await Tender.findOneAndUpdate(
-            { regNumber },
-            {
-              $push: {
-                [`findRequests.${i}.parsedRequest`]: {
-                  requestName: request,
-                  responseFromWebsites: responses,
-                },
-              },
-            },
-          );
-
           searchResults.push(responses);
+
+          parsedRequests.push({
+            requestName: request,
+            responseFromWebsites: responses,
+          });
         }
 
         const promptToAnalyze = getProductAnalysisPrompt(
@@ -190,10 +173,21 @@ export class TenderAnalyticsService {
           console.log(`Продукт ${name} был проанализирован findRequests.${i}.productAnalysis`);
         }
 
+        // Single update operation to set all data in the correct order
         await Tender.findOneAndUpdate(
           { regNumber },
-          { $set: { [`findRequests.${i}.productAnalysis`]: productAnalysis } },
+          {
+            $push: {
+              findRequests: {
+                itemName: name,
+                findRequest,
+                parsedRequest: parsedRequests,
+                productAnalysis,
+              },
+            },
+          },
         );
+
         return productAnalysis;
       });
 
