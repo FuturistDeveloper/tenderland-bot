@@ -157,8 +157,8 @@ export const getAnalyticsForTenders = async (regNumber: string, userId: number):
 };
 
 cron.schedule(config.cronSchedule, async () => {
-  // console.log('Getting new tenders');
-  // await tenderlandService.getNewTenders();
+  console.log('Getting new tenders');
+  await tenderlandService.getNewTenders();
 });
 
 app.listen(ENV.PORT, () => {
