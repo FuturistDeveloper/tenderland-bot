@@ -69,21 +69,20 @@ export const getAnalyticsForTenders = async (regNumber: string, userId: number):
     botService.sendMessage(userId, 'Тендер успешно найден! Начинаем анализ...');
 
     // 1 STEP: Скачать и распаковать файлы
-    const unpackedFiles = await tenderlandService.downloadZipFileAndUnpack(
-      tender.regNumber,
-      tender.files,
-    );
+    // const unpackedFiles = await tenderlandService.downloadZipFileAndUnpack(
+    //   tender.regNumber,
+    //   tender.files,
+    // );
 
-    // const unpackedFiles = {
-    //   files: [
-    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/Печатная форма извещения 39714788.html',
-    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 2 ���᭮����� ����.pdf',
-    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 3 �ॡ������ � ���.pdf',
-    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309/converted/�ਫ������ � 1  ���ᠭ�� ��쥪� ���㯪� 2.pdf',
-    //   ],
-    //   parentFolder:
-    //     '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/0187300010325000309',
-    // };
+    const unpackedFiles = {
+      files: [
+        '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/Извещение о закупке № 32514850391.html',
+        '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/протокол 1096.0391 ЗК 3 уч_итоги СМП.pdf',
+        '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/Итоговый протокол №32514850391-01.html',
+        '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391/converted/ЗК_МСП_бинокли и комплектующие_Ростовский ЦООТЭК.pdf',
+      ],
+      parentFolder: '/Users/matsveidubaleka/Documents/GitHub/tenderland-bot/tenderland/32514850391',
+    };
 
     if (!unpackedFiles) {
       console.error('[getAnalyticsForTenders] Не удалось скачать или распаковать файлы');
@@ -103,7 +102,7 @@ export const getAnalyticsForTenders = async (regNumber: string, userId: number):
     // const responseFromFiles = resTender?.responseFromFiles;
 
     // // 3 STEP: Удалить распакованные файлы
-    await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
+    // await tenderlandService.cleanupExtractedFiles(unpackedFiles.parentFolder);
 
     if (!responseFromFiles) {
       console.error('[getAnalyticsForTenders] Не удалось получить ответ Gemini');
@@ -112,9 +111,9 @@ export const getAnalyticsForTenders = async (regNumber: string, userId: number):
     }
 
     // 4 STEP: Анализ товаров
-    const isAnalyzed = await tenderService.analyzeItems(tender.regNumber, responseFromFiles);
+    const analyzedProducts = await tenderService.analyzeItems(tender.regNumber, responseFromFiles);
 
-    if (isAnalyzed) {
+    if (analyzedProducts) {
       // 5 STEP: Генерация отчета
       const finalReport = await tenderService.generateFinalReport(tender.regNumber);
 

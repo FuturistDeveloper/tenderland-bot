@@ -155,7 +155,7 @@ export class TenderAnalyticsService {
             { regNumber },
             {
               $push: {
-                [`findRequests.${i}.parsedRequest`]: {
+                [`findRequests.${i - 1}.parsedRequest`]: {
                   requestName: request,
                   responseFromWebsites: responses,
                 },
@@ -182,13 +182,19 @@ export class TenderAnalyticsService {
           'utf8',
         );
 
-        console.log('Analyzing product:', name);
+        console.log('Analyzing product:', name, `findRequests.${i - 1}.productAnalysis`);
 
         const productAnalysis = await this.geminiService.analyzeProduct(promptToAnalyze);
+
+        if (productAnalysis) {
+          console.log(`Продукт ${name} был проанализирован findRequests.${i - 1}.productAnalysis`);
+        }
+
         await Tender.findOneAndUpdate(
           { regNumber },
-          { $set: { [`findRequests.${i}.productAnalysis`]: productAnalysis } },
+          { $set: { [`findRequests.${i - 1}.productAnalysis`]: productAnalysis } },
         );
+        return productAnalysis;
       });
 
       const results = await Promise.all(itemPromises);
